@@ -1,3 +1,4 @@
+import os
 import asyncio
 import random
 import discord
@@ -30,6 +31,6 @@ async def diem_danh(ctx):
     u["cash"] += reward
     await ctx.send(f"🎉 **{ctx.author.name}** đã điểm danh và nhận được `{reward:,}` $!")
 
-# Token của bạn đã được cập nhật ở đây
-token = "MTUzNTg1NTE2NDcwMTgwNjY4Mw.GDdGF4.uG_TSc9AVfx-Q9dki52eQRUjN8wn3dnjMmoXK4"
+# Lấy token an toàn từ Environment Variable
+token = os.getenv("BOT_TOKEN")
 bot.run(token)
