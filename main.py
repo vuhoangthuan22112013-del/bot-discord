@@ -50,7 +50,7 @@ async def on_ready():
 async def diemdanh_cmd(ctx):
     cd = check_spam(ctx.author.id, "diemdanh", 2.0)
     if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s nữa!")
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi! Đợi **{cd}** giây nữa!")
 
     user_id = ctx.author.id
     now = time.time()
@@ -58,10 +58,10 @@ async def diemdanh_cmd(ctx):
         return await ctx.send(f"⚠️ {ctx.author.mention} Bạn đã điểm danh trong 12 giờ qua rồi!")
 
     diemdanh_cooldowns[user_id] = now
-    reward = random.randint(1000, 3000)
+    reward = 2593
     u = get_user(user_id, ctx.author.name)
     u["cash"] += reward
-    await ctx.send(f"🎁 {ctx.author.mention} Điểm danh thành công! Nhận `+{reward:,}$`")
+    await ctx.send(f"🎁 {ctx.author.mention} Điểm danh! `+{reward:,}$`")
 
 @bot.command(name="vi", aliases=["money", "bal"])
 async def vi_cmd(ctx, member: discord.Member = None):
@@ -80,12 +80,12 @@ async def vi_cmd(ctx, member: discord.Member = None):
     )
     await ctx.send(res)
 
-# --- LỆNH QUAY SLOT (!quay) - HIỆU ỨNG HIỆN TỪNG Ô MỘT ---
+# --- LỆNH QUAY SLOT (!quay) - ĐÚNG CHUẨN HIỆN TỪNG Ô TRONG VIDEO ---
 @bot.command(name="quay")
 async def quay_cmd(ctx, bet: int = None):
     cd = check_spam(ctx.author.id, "quay", 1.5)
     if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Đợi **{cd}**s nữa!")
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi! Đợi **{cd}** giây nữa!")
 
     if not bet or bet <= 0:
         return await ctx.send("❌ Cú pháp: `!quay [tiền]` (Ví dụ: `!quay 100`)")
@@ -101,7 +101,7 @@ async def quay_cmd(ctx, bet: int = None):
     s2 = random.choice(slots)
     s3 = random.choice(slots)
 
-    # Hiệu ứng khung vuông & xuất hiện từ từ từng ô
+    # Bước 1: Hiện ô đầu tiên, 2 ô sau là ?
     msg = await ctx.send(
         f"┌─────────────────────────┐\n"
         f"🎰 **MÁY SLOT BET88**\n"
@@ -109,8 +109,9 @@ async def quay_cmd(ctx, bet: int = None):
         f"`[ {s1} ] [ ? ] [ ? ]`\n"
         f"└─────────────────────────┘"
     )
-    await asyncio.sleep(0.7)
+    await asyncio.sleep(0.6)
 
+    # Bước 2: Hiện tiếp ô thứ 2
     await msg.edit(content=
         f"┌─────────────────────────┐\n"
         f"🎰 **MÁY SLOT BET88**\n"
@@ -118,8 +119,9 @@ async def quay_cmd(ctx, bet: int = None):
         f"`[ {s1} ] [ {s2} ] [ ? ]`\n"
         f"└─────────────────────────┘"
     )
-    await asyncio.sleep(0.7)
+    await asyncio.sleep(0.6)
 
+    # Bước 3: Hiện nốt ô thứ 3 và kết quả
     win = (s1 == s2 == s3)
     if win:
         reward = bet * 4
@@ -146,7 +148,7 @@ async def quay_cmd(ctx, bet: int = None):
 
     await msg.edit(content=res)
 
-# --- LỆNH TÀI XỈU (!tx) - KHUNG VUÔNG VÀ ĐỢI 30 GIÂY ---
+# --- LỆNH TÀI XỈU (!tx) ---
 @bot.command(name="tx", aliases=["taixiu"])
 async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     global tx_session
@@ -167,6 +169,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
             f"🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
             f"**{ctx.author.name}** đã mở bát!\n"
             f"Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
+            f"(Cược Max: 10,000,000$/ván)\n"
             f"⏱️ Thời gian: **30 giây**\n"
             f"└─────────────────────────┘"
         )
@@ -179,9 +182,10 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
                 await msg.edit(content=
                     f"┌─────────────────────────┐\n"
                     f"🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
-                    f"Gõ `!tx <tai/xiu> <tiền>`\n"
+                    f"Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
+                    f"(Cược Max: 10,000,000$/ván)\n"
                     f"⏱️ Thời gian: **{remaining} giây**\n"
-                    f"💰 Tổng Tài: `{tx_session['total_tai']:,}$` | Xỉu: `{tx_session['total_xiu']:,}$`\n"
+                    f"💰 Tổng Tài: `{tx_session['total_tai']:,}$` | Tổng Xỉu: `{tx_session['total_xiu']:,}$`\n"
                     f"└─────────────────────────┘"
                 )
             except: pass
@@ -191,7 +195,12 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
 
         tx_session["active"] = False
         try:
-            await msg.edit(content="┌─────────────────────────┐\n🎲 **NHÀ CÁI BET88 ĐANG XÓC BÁT...**\n└─────────────────────────┘")
+            await msg.edit(content=
+                f"┌─────────────────────────┐\n"
+                f"🎲 **NHÀ CÁI BET88 ĐANG XÓC BÁT...**\n"
+                f"💰 Tài: `{tx_session['total_tai']:,}$` | `[ ? ]` `[ ? ]` `[ ? ]`\n"
+                f"└─────────────────────────┘"
+            )
         except: pass
 
         await asyncio.sleep(2.0)
@@ -260,7 +269,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
 async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "xd", 1.5)
     if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Đợi **{cd}**s!")
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi! Đợi **{cd}** giây nữa!")
 
     if not choice or choice.lower() not in ["chan", "le"] or not bet or bet <= 0:
         return await ctx.send("❌ Cú pháp: `!xd [chan/le] [tiền]`")
@@ -270,8 +279,23 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
         return await ctx.send(f"❌ Bạn không đủ tiền! Ví còn `{u['cash']:,}$`.")
 
     u["cash"] -= bet
-    msg = await ctx.send("┌─────────────────────────┐\n🪙 **XÓC ĐĨA BET88**\n4 Đồng xu\n*Xóc... xóc... xóc...*\n└─────────────────────────┘")
-    await asyncio.sleep(1.2)
+    msg = await ctx.send(
+        f"┌─────────────────────────┐\n"
+        f"🪙 **XÓC ĐĨA BET88**\n"
+        f"4 Đồng xu\n"
+        f"*Xóc... xóc... xóc...*\n"
+        f"└─────────────────────────┘"
+    )
+    await asyncio.sleep(0.8)
+    
+    await msg.edit(content=
+        f"┌─────────────────────────┐\n"
+        f"🪙 **XÓC ĐĨA BET88**\n"
+        f"4 Đồng xu\n"
+        f"*Đặt bát xuống bàn...*\n"
+        f"└─────────────────────────┘"
+    )
+    await asyncio.sleep(0.8)
     
     reds = random.randint(0, 4)
     board = "🔴" * reds + "⚪" * (4 - reds)
@@ -283,27 +307,33 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
         u["cash"] += bet * 2
         res = (
             f"┌─────────────────────────┐\n"
-            f"🪙 **XÓC ĐĨA BET88**\n4 Đồng xu\n{board}\n"
-            f"Kết quả\n➔ **{kq_name} ({reds} Đỏ)**\n"
+            f"🪙 **XÓC ĐĨA BET88**\n"
+            f"4 Đồng xu\n"
+            f"{board}\n"
+            f"Kết quả\n"
+            f"➔ **{kq_name} ({reds} Đỏ)**\n"
             f"✨ **THẮNG!** Nhận `+{bet:,}$`\n"
             f"└─────────────────────────┘"
         )
     else:
         res = (
             f"┌─────────────────────────┐\n"
-            f"🪙 **XÓC ĐĨA BET88**\n4 Đồng xu\n{board}\n"
-            f"Kết quả\n➔ **{kq_name} ({reds} Đỏ)**\n"
+            f"🪙 **XÓC ĐĨA BET88**\n"
+            f"4 Đồng xu\n"
+            f"{board}\n"
+            f"Kết quả\n"
+            f"➔ **{kq_name} ({reds} Đỏ)**\n"
             f"💸 **CÁI ĂN SẠCH!** `-{bet:,}$`\n"
             f"└─────────────────────────┘"
         )
     await msg.edit(content=res)
 
-# --- LỆNH BẦU CUA (!bc) ---
+# --- LỆNH BẦU CUA (!bc) - HIỆN "TỪ TỪ HÉ BÁT..." GIỐNG TRONG VIDEO ---
 @bot.command(name="bc", aliases=["baucua"])
 async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "bc", 1.5)
     if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Đợi **{cd}**s!")
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi! Đợi **{cd}** giây nữa!")
 
     animals = {"ca": "🐟", "tom": "🦐", "cua": "🦀", "bau": "🥒", "ga": "🐓", "nai": "🦌"}
     if not choice or choice.lower() not in animals or not bet or bet <= 0:
@@ -314,8 +344,26 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         return await ctx.send(f"❌ Bạn không đủ tiền! Ví còn `{u['cash']:,}$`.")
 
     u["cash"] -= bet
-    msg = await ctx.send("┌─────────────────────────┐\n🎲 **BẦU CUA BET88**\nTrạng thái\n*Đang úp bát...*\n└─────────────────────────┘")
-    await asyncio.sleep(1.0)
+    
+    # Bước 1: Trạng thái đang úp bát
+    msg = await ctx.send(
+        f"┌─────────────────────────┐\n"
+        f"🎲 **BẦU CUA BET88**\n"
+        f"Trạng thái\n"
+        f"`[ ? ] [ ? ] [ ? ]`\n"
+        f"└─────────────────────────┘"
+    )
+    await asyncio.sleep(0.7)
+
+    # Bước 2: Từ từ hé bát giống trong video
+    await msg.edit(content=
+        f"┌─────────────────────────┐\n"
+        f"🎲 **BẦU CUA BET88**\n"
+        f"Trạng thái\n"
+        f"Từ từ hé bát...\n"
+        f"└─────────────────────────┘"
+    )
+    await asyncio.sleep(0.8)
 
     keys = list(animals.keys())
     d1, d2, d3 = random.choice(keys), random.choice(keys), random.choice(keys)
@@ -326,17 +374,30 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         u["cash"] += bet + reward
         res = (
             f"┌─────────────────────────┐\n"
-            f"🎲 **BẦU CUA BET88**\nMỞ BÁT\n"
+            f"🎲 **BẦU CUA BET88**\n"
+            f"MỞ BÁT\n"
             f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
-            f"Tổng kết\n✨ **TRÚNG {matches} CON!** `+{reward:,}$`\n"
+            f"Tổng kết\n"
+            f"✨ **MẤT SẠCH!** `-{bet:,}$` (hoặc trúng thưởng)\n"
+            f"└─────────────────────────┘"
+        )
+        res = (
+            f"┌─────────────────────────┐\n"
+            f"🎲 **BẦU CUA BET88**\n"
+            f"MỞ BÁT\n"
+            f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
+            f"Tổng kết\n"
+            f"✨ **TRÚNG {matches} CON!** `+{reward:,}$`\n"
             f"└─────────────────────────┘"
         )
     else:
         res = (
             f"┌─────────────────────────┐\n"
-            f"🎲 **BẦU CUA BET88**\nMỞ BÁT\n"
+            f"🎲 **BẦU CUA BET88**\n"
+            f"MỞ BÁT\n"
             f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
-            f"Tổng kết\n💸 **MẤT SẠCH!** `-{bet:,}$`\n"
+            f"Tổng kết\n"
+            f"💸 **MẤT SẠCH!** `-{bet:,}$`\n"
             f"└─────────────────────────┘"
         )
     await msg.edit(content=res)
