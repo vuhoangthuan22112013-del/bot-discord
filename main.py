@@ -7,7 +7,8 @@ from discord.ext import commands
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Tắt lệnh help mặc định của Discord để không bị đụng độ lỗi
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 users = {}
 
 def get_user(uid):
@@ -187,4 +188,4 @@ async def pvp_game(ctx, member: discord.Member = None):
 # Kích hoạt Token an toàn
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-    
+                  
