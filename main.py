@@ -50,9 +50,82 @@ async def vi_cmd(ctx, member: discord.Member = None):
     msg = (
         f"💳 Tài sản của {target.name}_{target.id[:4]}4617:\n"
         f"• Tiền mặt: `{u['cash']:,} $`\n"
-        f"• Ngân hàng: `0 $ (Lãi 2%/ngày)`"
+        f"• Ngân hàng: `{u['bank']:,} $ (Lãi 2%/ngày)`"
     )
     await ctx.send(msg)
+
+# --- LỆNH GỬI TIỀN VÀO NGÂN HÀNG (!gui) ---
+@bot.command(name="gui")
+async def gui_cmd(ctx, amount: str = None):
+    cd = check_spam(ctx.author.id, "gui", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    u = get_user(ctx.author.id)
+    if not amount:
+        return await ctx.send("❌ Cú pháp: `!gui [số_tiền hoặc all]`")
+    
+    if amount.lower() == "all":
+        val = u["cash"]
+    else:
+        try:
+            val = int(amount)
+        except ValueError:
+            return await ctx.send("❌ Số tiền không hợp lệ!")
+            
+    if val <= 0 or u["cash"] < val:
+        return await ctx.send("❌ Bạn không đủ tiền mặt để gửi!")
+        
+    u["cash"] -= val
+    u["bank"] += val
+    await ctx.send(f"🏦 Đã gửi thành công `{val:,} $` vào két sắt ngân hàng!")
+
+# --- LỆNH RÚT TIỀN TỪ NGÂN HÀNG (!rut) ---
+@bot.command(name="rut")
+async def rut_cmd(ctx, amount: str = None):
+    cd = check_spam(ctx.author.id, "rut", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    u = get_user(ctx.author.id)
+    if not amount:
+        return await ctx.send("❌ Cú pháp: `!rut [số_tiền hoặc all]`")
+    
+    if amount.lower() == "all":
+        val = u["bank"]
+    else:
+        try:
+            val = int(amount)
+        except ValueError:
+            return await ctx.send("❌ Số tiền không hợp lệ!")
+            
+    if val <= 0 or u["bank"] < val:
+        return await ctx.send("❌ Số dư két sắt không đủ!")
+        
+    u["bank"] -= val
+    u["cash"] += val
+    await ctx.send(f"💸 Đã rút thành công `{val:,} $` từ két sắt về ví!")
+
+# --- LỆNH CHUYỂN TIỀN CHO NGƯỜI KHÁC (!chuyen) ---
+@bot.command(name="chuyen", aliases=["pay", "give"])
+async def chuyen_cmd(ctx, member: discord.Member = None, amount: int = None):
+    cd = check_spam(ctx.author.id, "chuyen", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    if not member or not amount or amount <= 0:
+        return await ctx.send("❌ Cú pháp: `!chuyen @User [tiền]`")
+    if member.id == ctx.author.id:
+        return await ctx.send("❌ Không thể tự chuyển tiền cho chính mình!")
+        
+    u_sender = get_user(ctx.author.id)
+    if u_sender["cash"] < amount:
+        return await ctx.send("❌ Tiền mặt của bạn không đủ để chuyển!")
+        
+    u_receiver = get_user(member.id)
+    u_sender["cash"] -= amount
+    u_receiver["cash"] += amount
+    await ctx.send(f"🤝 **{ctx.author.name}** đã chuyển thành công `{amount:,} $` cho **{member.name}**!")
 
 # --- LỆNH QUAY SLOT (!quay) ---
 @bot.command(name="quay")
@@ -150,13 +223,12 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     d1, d2, d3 = random.choice(keys), random.choice(keys), random.choice(keys)
     matches = [d1, d2, d3].count(choice.lower())
     
-    res_text = f"🎲 **BẦU CUA BET88 - KẾT QUẢ**\n🎯 Kết quả: `{animals[d1]} {d2.capitalize()} | {animals[d2]} {d2.capitalize()} | {animals[d3]} {d3.capitalize()}`"
+    res_text = f"🎲 **BẦU CUA BET88 - KẾT QUẢ**\n🎯 Kết quả: `{animals[d1]} {d1.capitalize()} | {animals[d2]} {d2.capitalize()} | {animals[d3]} {d3.capitalize()}`"
     
     if matches > 0:
         win = int(bet * matches * 1.5)
         u["cash"] += win
-        res_getText = f"\n✨ **Trúng {matches} con (x1.5)!** Nhận `+{win:,} $`"
-        res_text += res_getText
+        res_text += f"\n✨ **Trúng {matches} con (x1.5)!** Nhận `+{win:,} $`"
     else:
         u["cash"] -= bet
         res_text += f"\n😢 **Tróc vẩy!** Mất `-{bet:,} $`"
