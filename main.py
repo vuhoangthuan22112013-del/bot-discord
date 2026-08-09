@@ -31,6 +31,6 @@ async def diem_danh(ctx):
     u["cash"] += reward
     await ctx.send(f"🎉 **{ctx.author.name}** đã điểm danh và nhận được `{reward:,}` $!")
 
-# Lấy token an toàn từ Environment Variable
+# Lấy token an toàn từ Environment Variable của Render
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
