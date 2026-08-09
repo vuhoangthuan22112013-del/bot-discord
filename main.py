@@ -1,6 +1,7 @@
 import os
 import asyncio
 import random
+import time
 import discord
 from discord.ext import commands
 from collections import Counter
@@ -8,20 +9,24 @@ from collections import Counter
 intents = discord.Intents.default()
 intents.message_content = True
 
-# Tắt lệnh help mặc định để không bị đụng độ alias
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 users = {}
 
 def get_user(uid):
     if uid not in users:
-        users[uid] = {"cash": 10000, "bank": 0}
+        users[uid] = {
+            "cash": 10000,
+            "bank": 0,
+            "last_daily": 0,         # Thời gian điểm danh gần nhất
+            "last_interest": time.time()  # Thời gian tính lãi ngân hàng
+        }
     return users[uid]
 
 @bot.event
 async def on_ready():
     print(f"✅ BOT ONLINE THÀNH CÔNG: {bot.user}")
 
-# --- MENU & TRỢ GIÚP ---
+# --- MENU TRỢ GIÚP ---
 @bot.command(name="menu", aliases=["trogiup"])
 async def menu_cmd(ctx):
     embed = discord.Embed(
@@ -40,25 +45,18 @@ async def menu_cmd(ctx):
         inline=False
     )
     embed.add_field(
-        name="🏛️ HỆ THỐNG",
-        value="`!vi`, `!gui [tiền]`, `!rut [tiền]`, `!chuyen @User [tiền]`, `!diemdanh`, `!bxh`, `!nhapcode [code]`",
+        name="🏛️ HỆ THỐNG & NGÂN HÀNG",
+        value="`!vi`, `!gui [tiền]`, `!rut [tiền]`, `!nhanlai`, `!chuyen @User [tiền]`, `!diemdanh`, `!bxh`, `!nhapcode [code]`",
         inline=False
     )
-    embed.set_footer(text="Gõ !diemdanh để nhận xu miễn phí mỗi ngày!")
+    embed.set_footer(text="Lãi ngân hàng 2%/ngày (!nhanlai) | Điểm danh 12h/lần!")
     await ctx.send(embed=embed)
 
-# --- HỆ THỐNG TÀI KHOẢN ---
+# --- HỆ THỐNG VÍ & NGÂN HÀNG (LÃI 2%/NGÀY) ---
 @bot.command(name="vi", aliases=["money", "bal"])
 async def check_vi(ctx):
     u = get_user(ctx.author.id)
-    await ctx.send(f"💰 **Tài sản của {ctx.author.name}:**\n- Tiền mặt: `{u['cash']:,}` $\n- Ngân hàng: `{u['bank']:,}` $")
-
-@bot.command(name="diemdanh", aliases=["daily"])
-async def diem_danh(ctx):
-    u = get_user(ctx.author.id)
-    reward = random.randint(5000, 20000)
-    u["cash"] += reward
-    await ctx.send(f"🎉 **{ctx.author.name}** đã điểm danh và nhận được `{reward:,}` $!")
+    await ctx.send(f"💰 **Tài sản của {ctx.author.name}:**\n- Tiền mặt: `{u['cash']:,}` $\n- Ngân hàng: `{u['bank']:,}` $ (Lãi 2%/ngày)")
 
 @bot.command(name="gui", aliases=["guitien"])
 async def gui_tien(ctx, amount: str = None):
@@ -84,6 +82,48 @@ async def rut_tien(ctx, amount: str = None):
     u["cash"] += val
     await ctx.send(f"💵 Bạn đã rút thành công `{val:,}` $ về ví tiền mặt!")
 
+# TỰ ĐỘNG CỘNG LÃI NGÂN HÀNG 2%/NGÀY
+@bot.command(name="nhanlai", aliases=["lai"])
+async def nhan_lai(ctx):
+    u = get_user(ctx.author.id)
+    if u["bank"] <= 0:
+        return await ctx.send("❌ Bạn không có tiền trong ngân hàng để nhận lãi!")
+    
+    now = time.time()
+    elapsed = now - u.get("last_interest", now)
+    days = elapsed / 86400  # 86400 giây = 24 giờ
+    
+    if days < 1:
+        hours_left = int((86400 - elapsed) // 3600)
+        mins_left = int(((86400 - elapsed) % 3600) // 60)
+        return await ctx.send(f"⏳ Chưa đủ 24h để nhận lãi! Vui lòng chờ thêm **{hours_left} giờ {mins_left} phút**.")
+    
+    lai = int(u["bank"] * 0.02 * int(days))
+    if lai < 1:
+        lai = 1
+    u["bank"] += lai
+    u["last_interest"] = now
+    await ctx.send(f"📈 Bạn đã nhận thành công `{lai:,}` $ tiền lãi ngân hàng (2%/ngày)!")
+
+# --- ĐIỂM DANH (12 TIẾNG / LẦN, THƯỞNG 1,000 - 3,000 $) ---
+@bot.command(name="diemdanh", aliases=["daily"])
+async def diem_danh(ctx):
+    u = get_user(ctx.author.id)
+    now = time.time()
+    cooldown = 12 * 3600  # 12 tiếng tính theo giây (43200s)
+    
+    if now - u["last_daily"] < cooldown:
+        remaining = cooldown - (now - u["last_daily"])
+        hours = int(remaining // 3600)
+        minutes = int((remaining % 3600) // 60)
+        return await ctx.send(f"⏳ **{ctx.author.name}**, bạn đã điểm danh rồi! Vui lòng quay lại sau **{hours} giờ {minutes} phút** nữa.")
+    
+    reward = random.randint(1000, 3000)
+    u["cash"] += reward
+    u["last_daily"] = now
+    await ctx.send(f"🎉 **{ctx.author.name}** đã điểm danh thành công và nhận được `{reward:,}` $!")
+
+# --- CHUYỂN TIỀN & BXH & CODE ---
 @bot.command(name="chuyen", aliases=["chuyentien"])
 async def chuyen_tien(ctx, member: discord.Member = None, amount: int = None):
     if not member or not amount or amount <= 0:
@@ -158,7 +198,7 @@ async def coin_flip(ctx, lua_chon: str = None, bet: int = None):
         u["cash"] -= bet
         await ctx.send(f"🪙 Ra **{kq.upper()}**! 💸 Thua `-{bet:,}` $!")
 
-# 1. VÒNG QUAY !quay
+# 1. VÒNG QUAY !quay (HIỆU ỨNG RA TỪNG CÁI & TỶ LỆ TRÚNG 36%)
 @bot.command(name="quay")
 async def quay_so(ctx, bet: int = None):
     if not bet or bet <= 0:
@@ -168,25 +208,50 @@ async def quay_so(ctx, bet: int = None):
         return await ctx.send("❌ Bạn không đủ tiền mặt!")
     
     symbols = ["🍒", "🍋", "🔔", "💎", "7️⃣"]
-    r1, r2, r3 = random.choice(symbols), random.choice(symbols), random.choice(symbols)
     
+    # Quyết định thắng hay thua theo tỷ lệ 36%
+    is_win = random.random() < 0.36
+    if is_win:
+        # Nếu thắng: Chọn 2 hoặc 3 biểu tượng giống nhau
+        if random.random() < 0.2: # 20% trong số thắng là Jackpot (3 con giống)
+            sym = random.choice(symbols)
+            r1, r2, r3 = sym, sym, sym
+        else: # 80% trong số thắng là 2 con giống
+            sym = random.choice(symbols)
+            other = random.choice([s for s in symbols if s != sym])
+            res_list = [sym, sym, other]
+            random.shuffle(res_list)
+            r1, r2, r3 = res_list
+    else:
+        # Nếu thua: 3 biểu tượng khác nhau hoàn toàn
+        r1, r2, r3 = random.sample(symbols, 3)
+
+    # Gửi tin nhắn ban đầu với hiệu ứng quay từng con
+    msg = await ctx.send("🎰 Vòng quay: [ ❓ | ❓ | ❓ ]")
+    await asyncio.sleep(1)
+    
+    await msg.edit(content=f"🎰 Vòng quay: [ {r1} | ❓ | ❓ ]")
+    await asyncio.sleep(1)
+    
+    await msg.edit(content=f"🎰 Vòng quay: [ {r1} | {r2} | ❓ ]")
+    await asyncio.sleep(1)
+
     cnt = Counter([r1, r2, r3])
     max_freq = max(cnt.values())
     
     if max_freq == 3:
         thuong = bet * 5
         u["cash"] += (thuong - bet)
-        msg = f"🎰 Vòng quay: [ {r1} | {r2} | {r3} ]\n🔥 **JACKPOT x5!** Bạn nhận `+{thuong:,}` $!"
+        res_text = f"🎰 Vòng quay: [ {r1} | {r2} | {r3} ]\n🔥 **JACKPOT x5!** Nhận `+{thuong:,}` $"
     elif max_freq == 2:
         thuong = int(bet * 2)
         u["cash"] += (thuong - bet)
-        msg = f"🎰 Vòng quay: [ {r1} | {r2} | {r3} ]\n🎉 **Trúng 2 con (x2)!** Nhận `+{thuong:,}` $!"
+        res_text = f"🎰 Vòng quay: [ {r1} | {r2} | {r3} ]\n🎉 **Trúng 2 con (x2)!** Nhận `+{thuong:,}` $"
     else:
-        thuong = int(bet * 1.5)
-        u["cash"] += int(thuong - bet)
-        msg = f"🎰 Vòng quay: [ {r1} | {r2} | {r3} ]\n✨ **Trúng 1 con (x1.5)!** Nhận `+{thuong:,}` $!"
+        u["cash"] -= bet
+        res_text = f"🎰 Vòng quay: [ {r1} | {r2} | {r3} ]\n💸 **Chúc bạn may mắn lần sau!** Mất `-{bet:,}` $"
         
-    await ctx.send(msg)
+    await msg.edit(content=res_text)
 
 # 2. BẦU CUA !bc
 @bot.command(name="bc", aliases=["baucua"])
@@ -223,7 +288,7 @@ async def bau_cua(ctx, choice: str = None, bet: int = None):
         msg += f"💸 Tróc vảy! Mất `-{bet:,}` $!"
     await ctx.send(msg)
 
-# 3. XÓC ĐĨA !xd
+# 3. XÓC ĐĨA !xd (GIAO DIỆN CHUẨN TỪNG BƯỚC NHƯ ẢNH)
 @bot.command(name="xd", aliases=["xocdia"])
 async def xoc_dia(ctx, choice: str = None, bet: int = None):
     if not choice or choice.lower() not in ["chan", "le"] or not bet or bet <= 0:
@@ -233,20 +298,38 @@ async def xoc_dia(ctx, choice: str = None, bet: int = None):
     if u["cash"] < bet:
         return await ctx.send("❌ Bạn không đủ tiền mặt!")
     
+    # Tạo Embed thông báo đang xóc đĩa
+    embed_loading = discord.Embed(
+        title="🪙 XÓC ĐĨA BET88",
+        description="🍴 *Xóc... xóc... xóc...*",
+        color=0xE67E22
+    )
+    msg = await ctx.send(embed=embed_loading)
+    
+    # Chờ 2 giây lắc đĩa (tránh bị đứng)
+    await asyncio.sleep(2)
+    
     dots = [random.choice([0, 1]) for _ in range(4)]
     red_count = sum(dots)
     ket_qua = "chan" if red_count % 2 == 0 else "le"
     
     board = "🔴" * red_count + "⚪" * (4 - red_count)
-    msg = f"皿 Bát mở: [ {board} ] (Đỏ: **{red_count}** $\rightarrow$ **{ket_qua.upper()}**)\n"
     
     if choice.lower() == ket_qua:
         u["cash"] += bet
-        msg += f"🎉 **Thắng!** Nhận `+{bet:,}` $"
+        res_desc = f"皿 Bát mở: [ {board} ] (Đỏ: **{red_count}** $\rightarrow$ **{ket_qua.upper()}**)\n\n🎉 **Thắng!** Bạn nhận `+{bet:,}` $"
+        color = 0x2ECC71
     else:
         u["cash"] -= bet
-        msg += f"💸 **Thua!** Mất `-{bet:,}` $"
-    await ctx.send(msg)
+        res_desc = f"皿 Bát mở: [ {board} ] (Đỏ: **{red_count}** $\rightarrow$ **{ket_qua.upper()}**)\n\n💸 **Thua!** Bạn mất `-{bet:,}` $"
+        color = 0xE74C3C
+
+    embed_result = discord.Embed(
+        title="🪙 XÓC ĐĨA BET88 - KẾT QUẢ",
+        description=res_desc,
+        color=color
+    )
+    await msg.edit(embed=embed_result)
 
 # --- THÁCH ĐẤU PVP ---
 @bot.command(name="thachdau", aliases=["danhbai"])
@@ -271,7 +354,6 @@ async def thach_dau(ctx, member: discord.Member = None, bet: int = None):
         f"🏆 **{winner.name}** chiến thắng và hốt `+{bet:,}` $ từ **{loser.name}**!"
     )
 
-# Tải Token từ biến môi trường của Render
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-                 
+    
