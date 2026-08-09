@@ -11,8 +11,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 users = {}
-
-# Hệ thống chống spam kiểm tra thời gian thực
 cooldowns = {}
 
 def check_spam(user_id, cmd_name, limit_seconds=2.0):
@@ -37,26 +35,44 @@ def get_user(uid):
 async def on_ready():
     print(f"✅ BOT ĐÃ SẴN SÀNG: {bot.user}")
 
-# --- LỆNH MENU (!menu hoặc !help) ---
+# --- LỆNH MENU GIAO DIỆN KHUNG VUÔNG VIỀN VÀNG (!menu) ---
 @bot.command(name="menu", aliases=["help", "giup"])
 async def menu_cmd(ctx):
     cd = check_spam(ctx.author.id, "menu", 1.5)
     if cd > 0:
         return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
 
-    menu_text = (
-        "🎲 **TRÒ CHƠI**\n"
-        "• `!tx [tai/xiu] [tiền]` (Đánh Tài Xỉu trực tiếp)\n"
-        "• `!quay [tiền]` (Máy Slot)\n"
-        "• `!bc [ca/tom/cua/bau/ga/nai] [tiền]` (Bầu Cua)\n"
-        "• `!xd [chan/le] [tiền]` (Xóc Đĩa)\n\n"
-        "🏦 **HỆ THỐNG**\n"
-        "• `!vi` hoặc `!vi @User`\n"
-        "• `!gui [tiền/all]` (Gửi tiền vào két)\n"
-        "• `!rut [tiền/all]` (Rút tiền từ két)\n"
-        "• `!chuyen @User [tiền]` (Chuyển tiền mặt)"
+    # Tạo khung Embed hình vuông có sọc màu vàng bên trái (mã màu: 0xFFD700)
+    embed = discord.Embed(
+        title="🎰 HỆ THỐNG GAME & NGÂN HÀNG BET88",
+        description="Dưới đây là danh sách các lệnh bạn có thể sử dụng:",
+        color=0xFFD700 # Màu vàng
     )
-    await ctx.send(menu_text)
+    
+    embed.add_field(
+        name="🎲 TRÒ CHƠI",
+        value=(
+            "• `!tx [tai/xiu] [tiền]` (Đánh Tài Xỉu)\n"
+            "• `!quay [tiền]` (Máy Slot)\n"
+            "• `!bc [ca/tom/cua/bau/ga/nai] [tiền]` (Bầu Cua)\n"
+            "• `!xd [chan/le] [tiền]` (Xóc Đĩa)"
+        ),
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🏦 HỆ THỐNG TÀI CHÍNH",
+        value=(
+            "• `!vi` hoặc `!vi @User` (Xem số dư)\n"
+            "• `!gui [tiền/all]` (Gửi tiền vào két)\n"
+            "• `!rut [tiền/all]` (Rút tiền từ két)\n"
+            "• `!chuyen @User [tiền]` (Chuyển tiền mặt)"
+        ),
+        inline=False
+    )
+    
+    embed.set_footer(text="Gõ lệnh trực tiếp vào kênh chat để bắt đầu!")
+    await ctx.send(embed=embed)
 
 # --- LỆNH XEM VÍ (!vi) ---
 @bot.command(name="vi", aliases=["money", "bal"])
@@ -288,4 +304,4 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
 
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-    
+            
