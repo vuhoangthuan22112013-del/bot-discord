@@ -15,7 +15,7 @@ users = {}
 # Hệ thống chống spam kiểm tra thời gian thực
 cooldowns = {}
 
-def check_spam(user_id, cmd_name, limit_seconds=2.0):
+def check_spam(user_id, cmd_name, limit_seconds=1.5):
     now = time.time()
     key = f"{user_id}_{cmd_name}"
     if key in cooldowns:
@@ -28,7 +28,7 @@ def check_spam(user_id, cmd_name, limit_seconds=2.0):
 def get_user(uid):
     if uid not in users:
         users[uid] = {
-            "cash": 5003, # Khởi tạo mức tiền giống trong video mẫu
+            "cash": 5003, # Khởi tạo mức tiền chuẩn như mẫu
             "bank": 0,
         }
     return users[uid]
@@ -36,6 +36,109 @@ def get_user(uid):
 @bot.event
 async def on_ready():
     print(f"✅ BOT ĐÃ SẴN SÀNG: {bot.user}")
+
+# --- MENU TRỢ GIÚP (!menu) ---
+@bot.command(name="menu", aliases=["trogiup"])
+async def menu_cmd(ctx):
+    cd = check_spam(ctx.author.id, "menu", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    msg = (
+        "🎰 **CASINO BET88 UY TÍN** 🎰\n"
+        "Chào mừng bạn đến với hệ thống giải trí đổi thưởng!\n\n"
+        "🎲 **TÀI XỈU & CASINO**\n"
+        "`!tx [tai/xiu] [tiền]` (Chơi Tài Xỉu ngay)\n"
+        "`!roulette [xanh/do/den] [tiền]` (Quay Roulette)\n"
+        "`!quay [tiền]` (Máy Slot)\n"
+        "`!bc [ca/tom/cua/bau/ga/nai] [tiền]` (Bầu Cua)\n"
+        "`!xd [chan/le] [tiền]` (Xóc Đĩa)\n\n"
+        "🏛️ **HỆ THỐNG**\n"
+        "`!vi` hoặc `!vi @User` | `!diemdanh`"
+    )
+    await ctx.send(msg)
+
+# --- LỆNH TÀI XỈU NHANH (!tx) ---
+@bot.command(name="tx", aliases=["taixiu"])
+async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
+    cd = check_spam(ctx.author.id, "tx", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    if not choice or choice.lower() not in ["tai", "xiu"] or not bet or bet <= 0:
+        return await ctx.send(f"❌ Cú pháp: `!tx [tai/xiu] [tiền]`")
+        
+    u = get_user(ctx.author.id)
+    if u["cash"] < bet:
+        return await ctx.send(f"❌ Bạn không đủ tiền mặt!")
+
+    msg = await ctx.send(f"🎲 **TÀI XỈU BET88**\n📳 *Đang lắc xúc xắc...*")
+    await asyncio.sleep(0.6)
+    
+    d1, d2, d3 = random.randint(1, 6), random.randint(1, 6), random.randint(1, 6)
+    tong = d1 + d2 + d3
+    ket_qua = "tai" if tong >= 11 else "xiu"
+    
+    res_text = f"🎲 **TÀI XỈU BET88 - KẾT QUẢ**\n`[ {d1} ] - [ {d2} ] - [ {d3} ]`\n➔ **{tong} Điểm ({ket_qua.upper()})**"
+    
+    if choice.lower() == ket_qua:
+        u["cash"] += bet
+        res_text += f"\n🎉 **Thắng!** Nhận `+{bet:,} $`"
+    else:
+        u["cash"] -= bet
+        res_text += f"\n💸 **Thua!** Mất `-{bet:,} $`"
+        
+    await msg.edit(content=res_text)
+
+# --- LỆNH ROULETTE MỚI (!roulette) ---
+@bot.command(name="roulette", aliases=["rl"])
+async def roulette_cmd(ctx, color_choice: str = None, bet: int = None):
+    cd = check_spam(ctx.author.id, "roulette", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    valid_colors = {"do": ("🔴", 1.5, 50), "den": ("⚫", 2.0, 25), "xanh": ("🟢", 3.0, 10)}
+    
+    if not color_choice or color_choice.lower() not in valid_colors or not bet or bet <= 0:
+        return await ctx.send(f"❌ Cú pháp: `!roulette [xanh/do/den] [tiền]`\n*(Tỷ lệ: Đỏ x1.5 [50%] | Đen x2 [25%] | Xanh x3 [10%])*")
+        
+    u = get_user(ctx.author.id)
+    if u["cash"] < bet:
+        return await ctx.send(f"❌ Bạn không đủ tiền mặt!")
+
+    choice = color_choice.lower()
+    
+    # Hiệu ứng xoay roulette
+    msg = await ctx.send(f"🎡 **ROULETTE BET88**\n🔄 *Bánh xe đang quay: `[ 🔴 | 🟢 | ⚫ ]`*")
+    await asyncio.sleep(0.5)
+    await msg.edit(content=f"🎡 **ROULETTE BET88**\n🔄 *Đang dừng lại: `[ ⚫ | 🔴 | 🟢 ]`*")
+    await asyncio.sleep(0.5)
+
+    # Quay theo tỷ lệ phần trăm yêu cầu
+    rand_val = random.randint(1, 100)
+    if rand_val <= 10:
+        result_color = "xanh"
+    elif rand_val <= (10 + 25): # Từ 11 đến 35
+        result_color = "den"
+    elif rand_val <= (10 + 25 + 50): # Từ 36 đến 85
+        result_color = "do"
+    else:
+        # Khoảng còn lại (86-100) coi như ra màu khác hoặc hụt (ví dụ ra Đỏ hoặc xịt)
+        result_color = "do" if random.random() > 0.5 else "den"
+
+    emoji, multiplier, _ = valid_colors[result_color]
+    
+    res_text = f"🎡 **ROULETTE BET88 - KẾT QUẢ**\n🎯 Ô trúng: **{emoji} {result_color.upper()}**"
+    
+    if choice == result_color:
+        win = int(bet * multiplier)
+        u["cash"] += (win - bet)
+        res_text += f"\n🎉 **TRÚNG ROULETTE!** Nhận `+{win:,} $` (x{multiplier})"
+    else:
+        u["cash"] -= bet
+        res_text += f"\n💸 **TRẬT LẤT!** Mất `-{bet:,} $`"
+        
+    await msg.edit(content=res_text)
 
 # --- LỆNH XEM VÍ (!vi) ---
 @bot.command(name="vi", aliases=["money", "bal"])
@@ -69,16 +172,13 @@ async def quay_cmd(ctx, bet: int = None):
         return await ctx.send(f"❌ Bạn không đủ tiền mặt!")
 
     symbols = ["💎", "🔔", "🍋", "🍒"]
-    
-    # Hiệu ứng quay giống hệt video
     msg = await ctx.send(f"🎰 Vòng quay: `[ ? ] [ ? ] [ ? ]`")
     
     await asyncio.sleep(0.5)
     await msg.edit(content=f"🎰 Vòng quay: `[ 💎 ] [ ? ] [ ? ]`")
-    
     await asyncio.sleep(0.5)
-    is_win = random.random() < 0.4
     
+    is_win = random.random() < 0.4
     if is_win:
         s = random.choice(symbols)
         r1, r2, r3 = s, s, random.choice(symbols)
@@ -150,19 +250,29 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     d1, d2, d3 = random.choice(keys), random.choice(keys), random.choice(keys)
     matches = [d1, d2, d3].count(choice.lower())
     
-    res_text = f"🎲 **BẦU CUA BET88 - KẾT QUẢ**\n🎯 Kết quả: `{animals[d1]} {d2.capitalize()} | {animals[d2]} {d2.capitalize()} | {animals[d3]} {d3.capitalize()}`"
+    res_text = f"🎲 **BẦU CUA BET88 - KẾT QUẢ**\n🎯 Kết quả: `{animals[d1]} {d1.capitalize()} | {animals[d2]} {d2.capitalize()} | {animals[d3]} {d3.capitalize()}`"
     
     if matches > 0:
         win = int(bet * matches * 1.5)
         u["cash"] += win
-        res_getText = f"\n✨ **Trúng {matches} con (x1.5)!** Nhận `+{win:,} $`"
-        res_text += res_getText
+        res_text += f"\n✨ **Trúng {matches} con (x1.5)!** Nhận `+{win:,} $`"
     else:
         u["cash"] -= bet
         res_text += f"\n😢 **Tróc vẩy!** Mất `-{bet:,} $`"
         
     await msg.edit(content=res_text)
 
+# --- ĐIỂM DANH HÀNG NGÀY ---
+@bot.command(name="diemdanh", aliases=["daily"])
+async def diemdanh_cmd(ctx):
+    cd = check_spam(ctx.author.id, "diemdanh", 1.5)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
+
+    u = get_user(ctx.author.id)
+    rw = random.randint(1000, 3000)
+    u["cash"] += rw
+    await ctx.send(f"🎁 **{ctx.author.name}** Điểm danh thành công! Nhận `+{rw:,} $`")
+
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-                     
