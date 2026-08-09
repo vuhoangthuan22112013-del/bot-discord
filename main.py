@@ -28,16 +28,16 @@ def check_spam(user_id, cmd_name, limit_seconds=1.5):
 def get_user(uid):
     if uid not in users:
         users[uid] = {
-            "cash": 5003, # Khởi tạo mức tiền chuẩn như mẫu
+            "cash": 5003, # Khởi tạo mức tiền chuẩn
             "bank": 0,
         }
     return users[uid]
 
 @bot.event
 async def on_ready():
-    print(f"✅ BOT ĐÃ SẴN SÀNG: {bot.user}")
+    print(f"✅ BOT ĐÃ CẬP NHẬT VÀ SẴN SÀNG: {bot.user}")
 
-# --- MENU TRỢ GIÚP (!menu) ---
+# --- MENU TRỢ GIÚP (!menu) ĐÃ CẬP NHẬT ---
 @bot.command(name="menu", aliases=["trogiup"])
 async def menu_cmd(ctx):
     cd = check_spam(ctx.author.id, "menu", 1.5)
@@ -47,8 +47,8 @@ async def menu_cmd(ctx):
     msg = (
         "🎰 **CASINO BET88 UY TÍN** 🎰\n"
         "Chào mừng bạn đến với hệ thống giải trí đổi thưởng!\n\n"
-        "🎲 **TÀI XỈU & CASINO**\n"
-        "`!tx [tai/xiu] [tiền]` (Chơi Tài Xỉu ngay)\n"
+        "🎲 **TRÒ CHƠI**\n"
+        "`!tx [tai/xiu] [tiền]` (Đánh Tài Xỉu trực tiếp)\n"
         "`!roulette [xanh/do/den] [tiền]` (Quay Roulette)\n"
         "`!quay [tiền]` (Máy Slot)\n"
         "`!bc [ca/tom/cua/bau/ga/nai] [tiền]` (Bầu Cua)\n"
@@ -58,7 +58,7 @@ async def menu_cmd(ctx):
     )
     await ctx.send(msg)
 
-# --- LỆNH TÀI XỈU NHANH (!tx) ---
+# --- LỆNH TÀI XỈU NHANH (!tx [tai/xiu] [tiền]) ---
 @bot.command(name="tx", aliases=["taixiu"])
 async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "tx", 1.5)
@@ -90,7 +90,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(content=res_text)
 
-# --- LỆNH ROULETTE MỚI (!roulette) ---
+# --- LỆNH ROULETTE (!roulette [xanh/do/den] [tiền]) ---
 @bot.command(name="roulette", aliases=["rl"])
 async def roulette_cmd(ctx, color_choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "roulette", 1.5)
@@ -108,26 +108,24 @@ async def roulette_cmd(ctx, color_choice: str = None, bet: int = None):
 
     choice = color_choice.lower()
     
-    # Hiệu ứng xoay roulette
+    # Hiệu ứng xoay roulette trực quan
     msg = await ctx.send(f"🎡 **ROULETTE BET88**\n🔄 *Bánh xe đang quay: `[ 🔴 | 🟢 | ⚫ ]`*")
     await asyncio.sleep(0.5)
     await msg.edit(content=f"🎡 **ROULETTE BET88**\n🔄 *Đang dừng lại: `[ ⚫ | 🔴 | 🟢 ]`*")
     await asyncio.sleep(0.5)
 
-    # Quay theo tỷ lệ phần trăm yêu cầu
+    # Quay chuẩn xác theo tỷ lệ yêu cầu
     rand_val = random.randint(1, 100)
     if rand_val <= 10:
         result_color = "xanh"
-    elif rand_val <= (10 + 25): # Từ 11 đến 35
+    elif rand_val <= 35: # 25% cho đen
         result_color = "den"
-    elif rand_val <= (10 + 25 + 50): # Từ 36 đến 85
+    elif rand_val <= 85: # 50% cho đỏ
         result_color = "do"
     else:
-        # Khoảng còn lại (86-100) coi như ra màu khác hoặc hụt (ví dụ ra Đỏ hoặc xịt)
         result_color = "do" if random.random() > 0.5 else "den"
 
     emoji, multiplier, _ = valid_colors[result_color]
-    
     res_text = f"🎡 **ROULETTE BET88 - KẾT QUẢ**\n🎯 Ô trúng: **{emoji} {result_color.upper()}**"
     
     if choice == result_color:
@@ -140,7 +138,7 @@ async def roulette_cmd(ctx, color_choice: str = None, bet: int = None):
         
     await msg.edit(content=res_text)
 
-# --- LỆNH XEM VÍ (!vi) ---
+# --- CÁC LỆNH KHÁC (VÍ, SLOT, XÓC ĐĨA, BẦU CUA, ĐIỂM DANH) ---
 @bot.command(name="vi", aliases=["money", "bal"])
 async def vi_cmd(ctx, member: discord.Member = None):
     cd = check_spam(ctx.author.id, "vi", 1.5)
@@ -157,7 +155,6 @@ async def vi_cmd(ctx, member: discord.Member = None):
     )
     await ctx.send(msg)
 
-# --- LỆNH QUAY SLOT (!quay) ---
 @bot.command(name="quay")
 async def quay_cmd(ctx, bet: int = None):
     cd = check_spam(ctx.author.id, "quay", 1.5)
@@ -196,7 +193,6 @@ async def quay_cmd(ctx, bet: int = None):
         u["cash"] -= bet
         await msg.edit(content=f"🎰 Vòng quay: `[ {r1} ] [ {r2} ] [ {r3} ]`\n😢 **Chúc bạn may mắn lần sau!** Mất `-{bet:,} $`")
 
-# --- LỆNH XÓC ĐĨA (!xd) ---
 @bot.command(name="xd", aliases=["xocdia"])
 async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "xd", 1.5)
@@ -228,7 +224,6 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(content=res_text)
 
-# --- LỆNH BẦU CUA (!bc) ---
 @bot.command(name="bc", aliases=["baucua"])
 async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "bc", 1.5)
@@ -262,7 +257,6 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(content=res_text)
 
-# --- ĐIỂM DANH HÀNG NGÀY ---
 @bot.command(name="diemdanh", aliases=["daily"])
 async def diemdanh_cmd(ctx):
     cd = check_spam(ctx.author.id, "diemdanh", 1.5)
@@ -276,3 +270,4 @@ async def diemdanh_cmd(ctx):
 
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
+        
