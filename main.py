@@ -83,12 +83,12 @@ async def menu_cmd(ctx):
         description="Chào mừng bạn đến với thiên đường đỏ đen!",
         color=0xFFD700
     )
-    embed.add_field(name="🎁 Điểm danh", value="`!diemdanh` (Nhận thưởng mỗi 12 tiếng)", inline=False)
+    embed.add_field(name="🎁 Điểm danh", value="`!diemdanh` (Nhận thưởng 1,000$ - 3,000$ mỗi 12 tiếng)", inline=False)
     embed.add_field(name="🎲 Tài Xỉu", value="`!tx [tai/xiu] [tiền]` (Tự động mở phiên và đặt cược)", inline=False)
     embed.add_field(name="🎰 Slot Machine", value="`!quay [tiền]`", inline=False)
     embed.add_field(name="🪙 Xóc Đĩa", value="`!xd [chan/le] [tiền]`", inline=False)
     embed.add_field(name="🐓 Bầu Cua", value="`!bc [ca/tom/cua/bau/ga/nai] [tiền]`", inline=False)
-    embed.add_field(name="💳 Tài Chính", value="`!vi` | `!gui [tiền/all]` | `!rut [tiền/all]` | `!chuyen @User [tiền]`", inline=False)
+    embed.add_field(name="💳 Tài Chính", value="`!vi` | `!diemdanh` | `!gui [tiền/all]` | `!rut [tiền/all]` | `!chuyen @User [tiền]`", inline=False)
     await ctx.send(embed=embed)
 
 # --- LỆNH !VI ---
@@ -145,7 +145,7 @@ async def chuyen_cmd(ctx, member: discord.Member = None, amount: int = None):
     u_receiver["cash"] += amount
     await ctx.send(f"🤝 Chuyển thành công `{amount:,}$` cho **{member.name}**!")
 
-# --- LỆNH TÀI XỈU (TỰ ĐỘNG MỞ PHIÊN KHI GÕ !TX TAI/XIU TIỀN, ĐẾM NGƯỢC 30S, CHỈ ĐƯỢC ĐÁNH 1 LẦN) ---
+# --- LỆNH TÀI XỈU (TỰ ĐỘNG MỞ PHIÊN, 30S, CHỈ ĐẶT 1 LẦN) ---
 @bot.command(name="tx", aliases=["taixiu"])
 async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     global tx_session
@@ -179,7 +179,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     )
     tx_session["msg"] = msg
 
-    # Đếm ngược 30 giây (chia ra các mốc cập nhật)
+    # Đếm ngược 30 giây
     times = [25, 20, 15, 10, 5]
     for t in times:
         await asyncio.sleep(5.0)
@@ -318,4 +318,4 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
 
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-    
+             
