@@ -1,5 +1,5 @@
-import os
 import asyncio
+import os
 import random
 import time
 import discord
@@ -11,313 +11,226 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 users = {}
 cooldowns = {}
-diemdanh_cooldowns = {}
 
-tx_session = {
+# Quản lý phiên tài xỉu chung cho toàn server
+tx_room = {
     "active": False,
-    "choice": None,
-    "bet": 0,
-    "user_id": None,
-    "user_name": "",
-    "msg": None
+    "bets": (
+        {}
+    ),  # Lưu tiền cược: {user_id: {"name": str, "choice": "tai"/"xiu", "amount": int}}
+    "msg": None,
 }
 
+
 def check_spam(user_id, cmd_name, limit_seconds=1.5):
-    now = time.time()
-    key = f"{user_id}_{cmd_name}"
-    if key in cooldowns:
-        diff = now - cooldowns[key]
-        if diff < limit_seconds:
-            return round(limit_seconds - diff, 1)
-    cooldowns[key] = now
-    return 0.0
+  now = time.time()
+  key = f"{user_id}_{cmd_name}"
+  if key in cooldowns:
+    diff = now - cooldowns[key]
+    if diff < limit_seconds:
+      return round(limit_seconds - diff, 1)
+  cooldowns[key] = now
+  return 0.0
+
 
 def get_user(uid, name="Thành viên"):
-    if uid not in users:
-        users[uid] = {
-            "name": name,
-            "cash": 4899,
-            "bank": 0,
-            "hang": "Người chơi Thường",
-            "ga": "Gà Công Nghiệp 🐥"
-        }
-    return users[uid]
+  if uid not in users:
+    users[uid] = {
+        "name": name,
+        "cash": 5000,  # Vốn khởi điểm cho người chơi mới
+        "bank": 0,
+    }
+  return users[uid]
+
 
 @bot.event
 async def on_ready():
-    print(f"✅ BOT ĐÃ SẴN SÀNG: {bot.user}")
+  print(f"🎲 Bot Tài Xỉu Phiên Bản Mới Đã Sẵn Sàng: {bot.user}")
 
-# --- LỆNH ĐIỂM DANH ---
-@bot.command(name="diemdanh")
-async def diemdanh_cmd(ctx):
-    cd = check_spam(ctx.author.id, "diemdanh", 2.0)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s nữa!")
 
-    user_id = ctx.author.id
-    now = time.time()
-    cooldown_time = 12 * 3600
+@bot.command(name="vi", aliases=["bal"])
+async def vi_cmd(ctx):
+  u = get_user(ctx.author.id, ctx.author.name)
+  embed = discord.Embed(
+      title=f"💰 TÀI KHOẢN: {ctx.author.name}", color=0x00FF00
+  )
+  embed.add_field(name="Tiền mặt", value=f"`{u['cash']:,}$`", inline=True)
+  embed.add_field(name="Két sắt", value=f"`{u['bank']:,}$`", inline=True)
+  await ctx.send(embed=embed)
 
-    if user_id in diemdanh_cooldowns:
-        elapsed = now - diemdanh_cooldowns[user_id]
-        if elapsed < cooldown_time:
-            remaining = int(cooldown_time - elapsed)
-            hours = remaining // 3600
-            minutes = (remaining % 3600) // 60
-            return await ctx.send(f"⚠️ {ctx.author.mention} Bạn đã điểm danh rồi! Đợi **{hours} giờ {minutes} phút** nữa nhé!")
 
-    diemdanh_cooldowns[user_id] = now
-    reward = random.randint(1000, 3000)
-    u = get_user(user_id, ctx.author.name)
-    u["cash"] += reward
+@bot.command(name="nhantien")
+async def nhantien_cmd(ctx):
+  u = get_user(ctx.author.id, ctx.author.name)
+  u["cash"] += 2000
+  await ctx.send(f"🎁 {ctx.author.mention} Đã nhận cứu trợ `+2,000$` vào ví!")
 
-    await ctx.send(f"🎁 {ctx.author.mention} Điểm danh thành công! Nhận `+{reward:,}$`")
 
-# --- LỆNH !MENU ---
-@bot.command(name="menu", aliases=["help", "giup"])
-async def menu_cmd(ctx):
-    cd = check_spam(ctx.author.id, "menu", 1.5)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s!")
+# --- HỆ THỐNG TÀI XỈU PHÒNG CHUNG ---
+@bot.command(name="tx")
+async def tx_cmd(ctx, choice: str = None, amount: str = None):
+  global tx_room
+  user_id = ctx.author.id
+  u = get_user(user_id, ctx.author.name)
 
-    embed = discord.Embed(
-        title="🎰 CASINO BET88 UY TÍN 🎰",
-        description="Chào mừng bạn đến với hệ thống giải trí đổi thưởng!",
-        color=0xFFD700
+  # Trường hợp 1: Gõ lệnh !tx để mở phiên mới
+  if not choice:
+    if tx_room["active"]:
+      return await ctx.send(
+          "⚠️ Đang có một phiên Tài Xỉu diễn ra rồi! Hãy nhanh tay đặt cược."
+      )
+
+    tx_room["active"] = True
+    tx_room["bets"] = {}
+
+    msg = await ctx.send(
+        f"🎲 **PHIÊN TÀI XỈU MỚI ĐÃ MỞ!** 🎲\n"
+        f"👤 Người mở: **{ctx.author.name}**\n"
+        f"-------------------------------------\n"
+        f"👉 Cú pháp đặt cược: `!tx tai [số_tiền]` hoặc `!tx xiu [số_tiền]`\n"
+        f"⏱️ Thời gian đặt cược: **25 giây**\n"
+        f"💰 Tổng cược Tài: `0$` | Tổng cược Xỉu: `0$`"
     )
-    embed.add_field(name="🎁 Điểm danh", value="`!diemdanh` (Nhận 1k-3k mỗi 12h)", inline=False)
-    embed.add_field(name="🎲 TÀI XỈU", value="`!tx [tai/xiu] [tiền]` (Đặt cược trực tiếp)", inline=False)
-    embed.add_field(name="🎰 CASINO & GAME", value="`!quay [tiền]` (Slot)\n`!bc [ca/tom/cua/bau/ga/nai] [tiền]` (Bầu Cua)\n`!xd [chan/le] [tiền]` (Xóc Đĩa)", inline=False)
-    embed.add_field(name="💳 HỆ THỐNG TÀI CHÍNH", value="`!vi` (Xem số dư)\n`!gui [tiền/all]` | `!rut [tiền/all]`\n`!chuyen @User [tiền]`", inline=False)
-    await ctx.send(embed=embed)
+    tx_room["msg"] = msg
 
-# --- LỆNH !VI ---
-@bot.command(name="vi", aliases=["money", "bal"])
-async def vi_cmd(ctx, member: discord.Member = None):
-    cd = check_spam(ctx.author.id, "vi", 1.0)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s!")
+    # Đếm ngược 25 giây cho phép người chơi vào tiền
+    for remaining in [20, 15, 10, 5]:
+      await asyncio.sleep(5.0)
+      if not tx_room["active"]:
+        return
 
-    target = member if member else ctx.author
-    u = get_user(target.id, target.name)
-    tag_id = target.id % 10000
-    
-    embed = discord.Embed(
-        title=f"💳 TÀI KHOẢN: {target.name.upper()}_{tag_id:04d}",
-        color=0xFFD700
-    )
-    embed.add_field(name="Hạng thẻ", value=f"👤 {u['hang']}", inline=False)
-    embed.add_field(name="Gà chiến", value=f"{u['ga']}", inline=False)
-    embed.add_field(name="💵 Tiền mặt", value=f"`{u['cash']:,}$`", inline=False)
-    embed.add_field(name="🏦 Kết sắt", value=f"`{u['bank']:,}$`", inline=False)
-    
-    await ctx.send(embed=embed)
+      # Tính tổng tiền các cửa
+      t_tai = sum(
+          b["amount"]
+          for b in tx_room["bets"].values()
+          if b["choice"] == "tai"
+      )
+      t_xiu = sum(
+          b["amount"]
+          for b in tx_room["bets"].values()
+          if b["choice"] == "xiu"
+      )
 
-# --- LỆNH GỬI / RÚT / CHUYỂN ---
-@bot.command(name="gui")
-async def gui_cmd(ctx, amount: str = None):
-    u = get_user(ctx.author.id, ctx.author.name)
-    if not amount: return await ctx.send("❌ Cú pháp: `!gui [số_tiền hoặc all]`")
-    val = u["cash"] if amount.lower() == "all" else int(amount)
-    if val <= 0 or u["cash"] < val: return await ctx.send("❌ Không đủ tiền mặt trong ví!")
-    u["cash"] -= val
-    u["bank"] += val
-    await ctx.send(f"🏦 Đã gửi `{val:,}$` vào két sắt thành công!")
+      try:
+        await msg.edit(
+            content=f"🎲 **PHIÊN TÀI XỈU ĐANG DIỄN RA...** 🎲\n"
+            f"⏱️ Thời gian còn lại: **{remaining} giây**\n"
+            f"-------------------------------------\n"
+            f"💰 Tổng cược Tài: `{t_tai:,}$` | Tổng cược Xỉu: `{t_xiu:,}$`\n"
+            f"👉 Gõ `!tx tai [tiền]` hoặc `!tx xiu [tiền]` để tham gia!"
+        )
+      except:
+        pass
 
-@bot.command(name="rut")
-async def rut_cmd(ctx, amount: str = None):
-    u = get_user(ctx.author.id, ctx.author.name)
-    if not amount: return await ctx.send("❌ Cú pháp: `!rut [số_tiền hoặc all]`")
-    val = u["bank"] if amount.lower() == "all" else int(amount)
-    if val <= 0 or u["bank"] < val: return await ctx.send("❌ Két sắt không đủ tiền!")
-    u["bank"] -= val
-    u["cash"] += val
-    await ctx.send(f"💸 Đã rút `{val:,}$` về ví!")
+    await asyncio.sleep(5.0)
+    if not tx_room["active"]:
+      return
 
-@bot.command(name="chuyen")
-async def chuyen_cmd(ctx, member: discord.Member = None, amount: int = None):
-    if not member or not amount or amount <= 0:
-        return await ctx.send("❌ Cú pháp: `!chuyen @User [tiền]`")
-    u_sender = get_user(ctx.author.id, ctx.author.name)
-    if u_sender["cash"] < amount: return await ctx.send("❌ Tiền mặt không đủ để chuyển!")
-    u_receiver = get_user(member.id, member.name)
-    u_sender["cash"] -= amount
-    u_receiver["cash"] += amount
-    await ctx.send(f"🤝 Chuyển thành công `{amount:,}$` cho **{member.name}**!")
+    # Đóng phiên và quay thưởng
+    tx_room["active"] = False
 
-# --- LỆNH TÀI XỈU (!tx) ---
-@bot.command(name="tx", aliases=["taixiu"])
-async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
-    cd = check_spam(ctx.author.id, "tx", 1.5)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s!")
+    try:
+      await msg.edit(content="🎰 **HỆ THỐNG ĐANG LẮC XÚC XẮC...** 🎲🎲🎲")
+    except:
+      pass
 
-    u = get_user(ctx.author.id, ctx.author.name)
-
-    if not choice or choice.lower() not in ["tai", "xiu"] or not bet or bet <= 0:
-        return await ctx.send("❌ Cú pháp: `!tx [tai/xiu] [tiền]` (Ví dụ: `!tx tai 100`)")
-
-    if u["cash"] < bet:
-        return await ctx.send(f"❌ Bạn không đủ tiền mặt! Ví chỉ còn `{u['cash']:,}$`.")
-
-    # Trừ tiền trước khi quay
-    u["cash"] -= bet
-
-    msg = await ctx.send(f"🔴 **SÒNG TÀI XỈU BET88**\n*Đang lắc bát...*")
     await asyncio.sleep(2.0)
 
-    d1, d2, d3 = random.randint(1,6), random.randint(1,6), random.randint(1,6)
+    d1, d2, d3 = random.randint(1, 6), random.randint(1, 6), random.randint(1, 6)
     total = d1 + d2 + d3
-    kq = "tai" if total >= 11 else "xiu"
-    kq_text = "TÀI" if kq == "tai" else "XỈU"
+    ket_qua = "tai" if total >= 11 else "xiu"
+    kq_text = "TÀI" if ket_qua == "tai" else "XỈU"
 
-    win = (choice.lower() == kq)
-    if win:
-        u["cash"] += bet * 2
-        res = (
-            f"🔴 **MỞ BÁT BET88**\n"
-            f"Kết Quả\n`[ {d1} ]` - `[ {d2} ]` - `[ {d3} ]`\n\n"
-            f"➔ **{total} ĐIỂM ({kq_text})**\n"
-            f"✨ **THẮNG!** Nhận `+{bet:,}$`"
+    # Tổng kết thắng thua cho từng người
+    thang_str = ""
+    thua_str = ""
+
+    for uid, data in tx_room["bets"].items():
+      player_u = get_user(uid)
+      bet_amt = data["amount"]
+      p_choice = data["choice"]
+      p_name = data["name"]
+
+      if p_choice == ket_qua:
+        player_u["cash"] += bet_amt * 2  # Hoàn vốn + lãi 1-1
+        thang_str += (
+            f"• {p_name}: +`{bet_amt * 2:,}$` (Cửa {p_choice.upper()})\n"
         )
-    else:
-        res = (
-            f"🔴 **MỞ BÁT BET88**\n"
-            f"Kết Quả\n`[ {d1} ]` - `[ {d2} ]` - `[ {d3} ]`\n\n"
-            f"➔ **{total} ĐIỂM ({kq_text})**\n"
-            f"💸 **TRẬT HỦ (MẤT TRẮNG)!** `-{bet:,}$`"
-        )
+      else:
+        thua_str += f"• {p_name}: -`{bet_amt:,}$` (Cửa {p_choice.upper()})\n"
 
-    await msg.edit(content=res)
+    if not thang_str:
+      thang_str = "Không có\n"
+    if not thua_str:
+      thua_str = "Không có\n"
 
-# --- LỆNH QUAY SLOT (!quay) ---
-@bot.command(name="quay")
-async def quay_cmd(ctx, bet: int = None):
-    cd = check_spam(ctx.author.id, "quay", 1.5)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s!")
+    result_message = (
+        f"👑 **KẾT QUẢ PHIÊN TÀI XỈU** 👑\n"
+        f"🎲 Xúc xắc: `[ {d1} ] - [ {d2} ] - [ {d3} ]`\n"
+        f"🎯 Tổng điểm: **{total} ({kq_text})**\n\n"
+        f"✨ **DANH SÁCH THẮNG:**\n{thang_str}\n"
+        f"💸 **DANH SÁCH THUA:**\n{thua_str}"
+    )
 
-    if not bet or bet <= 0:
-        return await ctx.send("❌ Cú pháp: `!quay [tiền]` (Ví dụ: `!quay 100`)")
+    try:
+      await msg.edit(content=result_message)
+    except:
+      await ctx.send(result_message)
+    return
 
-    u = get_user(ctx.author.id, ctx.author.name)
-    if u["cash"] < bet:
-        return await ctx.send(f"❌ Bạn không đủ tiền mặt để quay! Ví hiện tại chỉ còn `{u['cash']:,}$`.")
+  # Trường hợp 2: Người chơi đặt cược !tx [tai/xiu] [tiền]
+  choice = choice.lower()
+  if choice not in ["tai", "xiu"]:
+    return await ctx.send(
+        "❌ Cú pháp sai! Vui lòng dùng: `!tx tai [tiền]` hoặc `!tx xiu [tiền]`"
+    )
 
-    u["cash"] -= bet
-    
-    # Random kết quả slot chuẩn y hệt video
-    slots = ["🍋", "🔔", "🍒", "⭐", "💎"]
-    s1, s2, s3 = random.choice(slots), random.choice(slots), random.choice(slots)
+  if not tx_room["active"]:
+    return await ctx.send(
+        "❌ Hiện tại chưa có phiên Tài Xỉu nào mở! Hãy gõ lệnh `!tx` đơn độc lập"
+        " để mở phiên mới."
+    )
 
-    if s1 == s2 == s3:
-        u["cash"] += bet * 5
-        res = (
-            f"🎰 **MÁY SLOT BET88**\n"
-            f"KẾT QUẢ\n"
-            f"`[ {s1} ] [ {s2} ] [ {s3} ]`\n"
-            f"Thông báo\n"
-            f"✨ **NỔ HŨ!** Nhận `+{bet * 4:,}$`"
-        )
-    else:
-        res = (
-            f"🎰 **MÁY SLOT BET88**\n"
-            f"KẾT QUẢ\n"
-            f"`[ {s1} ] [ {s2} ] [ {s3} ]`\n"
-            f"Thông báo\n"
-            f"💸 **TRẬT HỦ (MẤT TRẮNG)!** `-{bet:,}$`"
-        )
+  if not amount:
+    return await ctx.send("❌ Vui lòng nhập số tiền cược! Ví dụ: `!tx tai 500`")
 
-    await ctx.send(res)
+  # Xử lý số tiền (hỗ trợ chữ 'all')
+  if amount.lower() == "all":
+    bet_val = u["cash"]
+  else:
+    try:
+      bet_val = int(amount)
+    except ValueError:
+      return await ctx.send("❌ Số tiền cược không hợp lệ!")
 
-# --- LỆNH XÓC ĐĨA (!xd) ---
-@bot.command(name="xd", aliases=["xocdia"])
-async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
-    cd = check_spam(ctx.author.id, "xd", 1.5)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s!")
+  if bet_val <= 0:
+    return await ctx.send("❌ Số tiền cược phải lớn hơn 0!")
 
-    if not choice or choice.lower() not in ["chan", "le"] or not bet or bet <= 0:
-        return await ctx.send("❌ Cú pháp: `!xd [chan/le] [tiền]` (Ví dụ: `!xd chan 100`)")
-    
-    u = get_user(ctx.author.id, ctx.author.name)
-    if u["cash"] < bet:
-        return await ctx.send(f"❌ Bạn không đủ tiền mặt! Ví hiện tại chỉ còn `{u['cash']:,}$`.")
+  if u["cash"] < bet_val:
+    return await ctx.send(
+        f"❌ Bạn không đủ tiền mặt! Ví bạn chỉ còn `{u['cash']:,}$`."
+    )
 
-    u["cash"] -= bet
-    msg = await ctx.send(f"🪙 **XÓC ĐĨA BET88**\n4 Đồng xu\n*Xóc... xóc... xóc...*")
-    await asyncio.sleep(2.0)
-    
-    reds = random.randint(0, 4)
-    board = "🔴" * reds + "⚪" * (4 - reds)
-    is_chan = (reds % 2 == 0)
-    kq_name = "CHAN" if is_chan else "LE"
-    
-    win = ((choice.lower() == "chan" and is_chan) or (choice.lower() == "le" and not is_chan))
-    
-    if win:
-        u["cash"] += bet * 2
-        res = (
-            f"🪙 **XÓC ĐĨA BET88**\n"
-            f"4 Đồng xu\n{board}\n"
-            f"Kết quả\n➔ **{kq_name} ({reds} Đỏ)**\n"
-            f"✨ **THẮNG!** Nhận `+{bet:,}$`"
-        )
-    else:
-        res = (
-            f"🪙 **XÓC ĐĨA BET88**\n"
-            f"4 Đồng xu\n{board}\n"
-            f"Kết quả\n➔ **{kq_name} ({reds} Đỏ)**\n"
-            f"💸 **CÁI ĂN SẠCH!** `-{bet:,}$`"
-        )
+  # Trừ tiền ngay khi đặt cược
+  u["cash"] -= bet_val
 
-    await msg.edit(content=res)
+  # Lưu hoặc cộng dồn cược của người chơi trong phiên này
+  if user_id in tx_room["bets"]:
+    tx_room["bets"][user_id]["amount"] += bet_val
+    tx_room["bets"][user_id]["choice"] = choice  # Cập nhật cửa mới nhất nếu đổi
+  else:
+    tx_room["bets"][user_id] = {
+        "name": ctx.author.name,
+        "choice": choice,
+        "amount": bet_val,
+    }
 
-# --- LỆNH BẦU CUA (!bc) ---
-@bot.command(name="bc", aliases=["baucua"])
-async def baucua_cmd(ctx, choice: str = None, bet: int = None):
-    cd = check_spam(ctx.author.id, "bc", 1.5)
-    if cd > 0:
-        return await ctx.send(f"⚠️ {ctx.author.mention} Từ từ thôi! Đợi **{cd}**s!")
+  await ctx.send(
+      f"✅ `{ctx.author.name}` đã đặt thành công `{bet_val:,}$` vào cửa"
+      f" **{choice.upper()}**!"
+  )
 
-    animals = {"ca": "🐟", "tom": "🦐", "cua": "🦀", "bau": "🥒", "ga": "🐓", "nai": "🦌"}
-    if not choice or choice.lower() not in animals or not bet or bet <= 0:
-        return await ctx.send("❌ Cú pháp: `!bc [ca/tom/cua/bau/ga/nai] [tiền]` (Ví dụ: `!bc ca 100`)")
-        
-    u = get_user(ctx.author.id, ctx.author.name)
-    if u["cash"] < bet:
-        return await ctx.send(f"❌ Bạn không đủ tiền mặt! Ví hiện tại chỉ còn `{u['cash']:,}$`.")
 
-    u["cash"] -= bet
-    msg = await ctx.send(f"🎲 **BẦU CUA BET88**\nTrạng thái\n*Đang úp bát...*")
-    await asyncio.sleep(1.5)
-    
-    keys = list(animals.keys())
-    d1, d2, d3 = random.choice(keys), random.choice(keys), random.choice(keys)
-    
-    matches = [d1, d2, d3].count(choice.lower())
-    
-    if matches > 0:
-        reward = bet * matches
-        u["cash"] += bet + reward
-        res = (
-            f"🎲 **BẦU CUA BET88**\n"
-            f"MỞ BÁT\n"
-            f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
-            f"Tổng kết\n"
-            f"✨ **TRÚNG {matches} CON!** Nhận `+{reward:,}$`"
-        )
-    else:
-        res = (
-            f"🎲 **BẦU CUA BET88**\n"
-            f"MỞ BÁT\n"
-            f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
-            f"Tổng kết\n"
-            f"💸 **MẤT SẠCH!** `-{bet:,}$`"
-        )
-
-    await msg.edit(content=res)
-
+# Khởi chạy bot bằng biến môi trường BOT_TOKEN
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-            
