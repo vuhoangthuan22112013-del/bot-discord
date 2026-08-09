@@ -1,261 +1,99 @@
-import asyncio
-import os
-import random
 import discord
-from discord.ext import commands
+import random
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
 
+client = discord.Client(intents=intents)
 
-@bot.event
+# Lưu trữ số dư tiền ảo của người chơi (Mặc định mỗi người có 1000$)
+nguoi_dung_tien = {}
+
+@client.event
 async def on_ready():
-  print(f"Bot đã đăng nhập thành công dưới tên: {bot.user}")
+    print(f'Bot Tài Xỉu đã hoạt động: {client.user}')
 
+@client.event
+async def on_message(message):
+    if message.author == client.user:
+        return
 
-# Hàm phụ trợ để chọn màu thanh dọc bên trái của embed
-def get_embed_color(status):
-  # status: 'win', 'lose', 'draw' hoặc màu mặc định
-  if status == "win":
-    return discord.Color.green()  # Thắng -> Xanh lá
-  elif status == "lose":
-    return discord.Color.red()  # Thua -> Đỏ
-  elif status == "draw":
-    return discord.Color.gold()  # Hòa -> Vàng
-  return discord.Color.blue()  # Mặc định / Đang chơi
+    user_id = message.author.id
+    # Nếu người chơi chưa có tiền, cấp mặc định 1000$
+    if user_id not in nguoi_dung_tien:
+        nguoi_dung_tien[user_id] = 1000
 
+    noi_dung = message.content.strip().lower()
 
-# 1. Lệnh TÀI XỈU (!tx)
-@bot.command(name="tx")
-async def tai_xiu(ctx, choice: str = None, money: int = None):
-  if not choice or not money:
-    await ctx.send("⚠️ Cú pháp: `!tx <tai/xiu> <tien>` (Ví dụ: `!tx tai 100`)")
-    return
+    # Lệnh xem số dư: !vi
+    if noi_dung == '!vi':
+        tien = nguoi_dung_tien[user_id]
+        await message.channel.send(
+            f"💰 **TÀI KHOẢN: {message.author.name.upper()}**\n"
+            f"💵 Tiền mặt: **{tien:,}$**"
+        )
 
-  choice = choice.lower()
-  if choice not in ["tai", "xiu"]:
-    await ctx.send("⚠️ Bạn chỉ có thể chọn `tai` hoặc `xiu`!")
-    return
+    # Lệnh chơi tài xỉu: !tx [tai/xiu] [so_tien]
+    # Ví dụ: !tx tai 100 hoặc !tx xiu 50
+    elif noi_dung.startswith('!tx '):
+        phan_chia = noi_dung.split()
+        if len(phan_chia) < 3:
+            await message.channel.send("⚠️ Cú pháp sai! Hãy dùng: `!tx <tai/xiu> <số tiền>` (Ví dụ: `!tx tai 100`)")
+            return
 
-  if money <= 0:
-    await ctx.send("⚠️ Số tiền cược phải lớn hơn 0!")
-    return
+        lua_chon = phan_chia[1]
+        if lua_chon not in ['tai', 'xiu']:
+            await message.channel.send("⚠️ Bạn chỉ được chọn `tai` hoặc `xiu` thôi nhé!")
+            return
 
-  embed = discord.Embed(
-      title="🎲 SÒNG TÀI XỈU BET88 🎲",
-      description=(
-          f"**{ctx.author.name}** đã mở bát!\nGõ `!tx <tai/xiu> <tiền>` để"
-          f" theo!\n*(Cước max: 10,000,000$/ván)*"
-      ),
-      color=get_embed_color("neutral"),
-  )
-  embed.add_field(name="⏱️ Thời gian:", value="10 giây", inline=False)
-  embed.add_field(
-      name="Tổng Tài:", value=f"{money}$" if choice == "tai" else "0$", inline=True
-  )
-  embed.add_field(
-      name="Tổng Xỉu:", value=f"{money}$" if choice == "xiu" else "0$", inline=True
-  )
+        try:
+            so_tien_cuoc = int(phan_chia[2])
+        except ValueError:
+            await message.channel.send("⚠️ Số tiền cược phải là một con số hợp lệ!")
+            return
 
-  msg = await ctx.send(embed=embed)
+        if so_tien_cuoc <= 0:
+            await message.channel.send("⚠️ Số tiền cược phải lớn hơn 0!")
+            return
 
-  for i in range(10, 0, -3):
-    await asyncio.sleep(3)
-    embed.set_field_at(
-        0, name="⏱️ Thời gian:", value=f"{max(0, i-3)} giây", inline=False
-    )
-    await msg.edit(embed=embed)
+        if nguoi_dung_tien[user_id] < so_tien_cuoc:
+            await message.channel.send(f"❌ Bạn không đủ tiền! Số dư hiện tại của bạn là: **{nguoi_dung_tien[user_id]:,}$**")
+            return
 
-  await asyncio.sleep(1)
-  await ctx.send(
-      f"🏠 **NHÀ CÁI BET88 ĐANG XÓC BÁT...**\n🎲 [ ? ] [ ? ] [ ? ]"
-  )
-  await asyncio.sleep(2)
+        # Trừ tiền cược trước
+        nguoi_dung_tien[user_id] -= so_tien_cuoc
 
-  dice1 = random.randint(1, 6)
-  dice2 = random.randint(1, 6)
-  dice3 = random.randint(1, 6)
-  total_score = dice1 + dice2 + dice3
+        # Gửi thông báo bắt đầu lắc xúc xắc giống trong video
+        await message.channel.send("🎲 **SÒNG TÀI XỈU**\n*Đang lắc xúc xắc...*")
 
-  result = "tai" if total_score >= 11 else "xiu"
-  result_text = "TÀI" if result == "tai" else "XỈU"
-  is_win = choice == result
+        # Sinh ngẫu nhiên 3 viên xúc xắc từ 1 đến 6
+        x1 = random.randint(1, 6)
+        x2 = random.randint(1, 6)
+        x3 = random.randint(1, 6)
+        tong_diem = x1 + x2 + x3
 
-  # Xác định màu cột dọc: Thắng = Xanh lá, Thua = Đỏ
-  color_status = "win" if is_win else "lose"
+        # Xác định Tài hay Xỉu (Từ 3-10 là Xỉu, từ 11-18 là Tài)
+        ket_qua_ban = "xiu" if 3 <= tong_diem <= 10 else "tai"
+        ten_ket_qua = "XỈU" if ket_qua_ban == "xiu" else "TÀI"
 
-  result_embed = discord.Embed(
-      title="🔴 MỞ BÁT BET88",
-      description=f"Kết Quả\n[ {dice1} ] - [ {dice2} ] - [ {dice3} ]",
-      color=get_embed_color(color_status),
-  )
-  result_embed.add_field(
-      name=f"➔ {total_score} ĐIỂM ({result_text})", value="", inline=False
-  )
+        # Kiểm tra thắng thua
+        thong_bao_ket_qua = ""
+        if lua_chon == ket_qua_ban:
+            # Thắng thì nhận lại tiền cược + số tiền thắng (nhân đôi tiền cược)
+            tien_thuong = so_tien_cuoc * 2
+            nguoi_dung_tien[user_id] += tien_thuong
+            thong_bao_ket_qua = f"🎉 **THẮNG!** Nhận được `+{tien_thuong:,}$`"
+        else:
+            thong_bao_ket_qua = f"💸 **THUA!** Mất `-{so_tien_cuoc:,}$`"
 
-  if is_win:
-    result_embed.add_field(
-        name="🏆 THẮNG", value=f"Chúc mừng bạn nhận được +{money}$", inline=False
-    )
-  else:
-    result_embed.add_field(
-        name="💀 THUA", value=f"- {ctx.author.name} (-{money}$)", inline=False
-    )
+        # Gửi kết quả chi tiết giống video
+        await message.channel.send(
+            f"🎲 **MỞ BÁT**\n"
+            f"Kết Quả: `[ {x1} ] - [ {x2} ] - [ {x3} ]`\n"
+            f"📊 Tổng Điểm: **{tong_diem} ({ten_ket_qua})**\n"
+            f"{thong_bao_ket_qua}\n"
+            f"💵 Số dư ví hiện tại: **{nguoi_dung_tien[user_id]:,}$**"
+        )
 
-  await ctx.send(embed=result_embed)
-
-
-# 2. Lệnh XÓC ĐĨA (!xd)
-@bot.command(name="xd")
-async def xoc_dia(ctx, choice: str = None, money: int = None):
-  if not choice or not money:
-    await ctx.send("⚠️ Cú pháp: `!xd <chan/le> <tien>` (Ví dụ: `!xd chan 100`)")
-    return
-
-  choice = choice.lower()
-  if choice not in ["chan", "le"]:
-    await ctx.send("⚠️ Bạn chỉ có thể chọn `chan` hoặc `le`!")
-    return
-
-  await ctx.send(
-      f"🪙 **XÓC ĐĨA BET88**\nĐang xóc... Đặt bát xuống bàn..."
-  )
-  await asyncio.sleep(2)
-
-  # 4 nút đồng xu ngẫu nhiên (màu đỏ / trắng)
-  coins = [random.choice(["🔴", "⚪"]) for _ in range(4)]
-  red_count = coins.count("🔴")
-
-  # Quy ước chẵn/lẻ theo số lượng nút đỏ (4 đỏ, 2 đỏ, 0 đỏ là Chẵn; 3 đỏ, 1 đỏ là Lẻ)
-  is_chan = red_count in [0, 2, 4]
-  result_type = "chan" if is_chan else "le"
-  result_name = "CHẴN" if is_chan else "LẺ"
-
-  user_win = (choice == "chan" and is_chan) or (choice == "le" and not is_chan)
-  color_status = "win" if user_win else "lose"
-
-  embed = discord.Embed(
-      title="🪙 XÓC ĐĨA BET88",
-      description=(
-          f"4 Đồng xu\n{' '.join(coins)}\n\nKết quả\n➔ {result_name} ({red_count}"
-          " Đỏ)"
-      ),
-      color=get_embed_color(color_status),
-  )
-
-  if user_win:
-    embed.add_field(
-        name="🏆 THẮNG", value=f"Nhận được +{money}$", inline=False
-    )
-  else:
-    embed.add_field(
-        name="CÁI ĂN SẠCH!", value=f"-{money}$ (-{ctx.author.name})", inline=False
-    )
-
-  await ctx.send(embed=embed)
-
-
-# 3. Lệnh QUAY (SLOT MACHINE - !quay)
-@bot.command(name="quay")
-async def quay_slot(ctx, money: int = 100):
-  # Mô phỏng hiệu ứng máy đang quay
-  msg = await ctx.send("🎰 **MÁY SLOT BET88**\nMáy đang quay...\n[ 🍋 ] [ 🔔 ] [ 🍒 ]")
-  await asyncio.sleep(1.5)
-
-  items = ["🍋", "🔔", "🍒", "💎", "⭐", "7️⃣"]
-  r1, r2, r3 = random.choices(items, k=3)
-
-  # Kiểm tra thắng: 3 biểu tượng giống nhau là trúng Jackpot (Thắng), ngược lại Thua
-  is_win = r1 == r2 == r3
-  color_status = "win" if is_win else "lose"
-
-  embed = discord.Embed(
-      title="🎰 MÁY SLOT BET88",
-      description=f"KẾT QUẢ\n[ {r1} ] [ {r2} ] [ {r3} ]",
-      color=get_embed_color(color_status),
-  )
-
-  if is_win:
-    embed.add_field(
-        name="🎉 TRẮNG HỦ (JACKPOT)!",
-        value=f"Chúc mừng nhận +{money * 10}$",
-        inline=False,
-    )
-  else:
-    embed.add_field(
-        name="Thông báo", value=f"TRẮT HỦ (MẤT TRẮNG)! -{money}$", inline=False
-    )
-
-  await ctx.send(embed=embed)
-
-
-# 4. Lệnh BẦU CUA (!bc)
-@bot.command(name="bc")
-async def bau_cua(ctx, choice: str = None, money: int = None):
-  if not choice or not money:
-    await ctx.send(
-        "⚠️ Cú pháp: `!bc <bau/cua/tom/ca/ga/nai> <tien>` (Ví dụ: `!bc bau"
-        " 100`)"
-    )
-    return
-
-  symbols = {
-      "bau": " bầu 🟢",
-      "cua": " cua 🔴",
-      "tom": " tôm 🦞",
-      "ca": " cá 🐟",
-      "ga": " gà 🐓",
-      "nai": " nai 🦌",
-  }
-
-  choice = choice.lower()
-  if choice not in symbols:
-    await ctx.send("⚠️ Lựa chọn không hợp lệ! Chọn: bau, cua, tom, ca, ga, nai.")
-    return
-
-  await ctx.send("🎲 **BẦU CUA BET88**\nTừ từ hé bát...")
-  await asyncio.sleep(2)
-
-  # Tung 3 con ngẫu nhiên
-  dice_results = random.choices(list(symbols.keys()), k=3)
-  displayed_dice = [symbols[d] for d in dice_results]
-
-  # Đếm số lần xuất hiện của lựa chọn người chơi
-  match_count = dice_results.count(choice)
-  is_win = match_count > 0
-
-  # Nếu trúng thì thắng, không trúng thì thua
-  color_status = "win" if is_win else "lose"
-
-  embed = discord.Embed(
-      title="🦀 BẦU CUA BET88",
-      description=(
-          f"Trạng thái\n[ {displayed_dice[0]} ] [ {displayed_dice[1]} ] [ "
-          f"{displayed_dice[2]} ]"
-      ),
-      color=get_embed_color(color_status),
-  )
-
-  if is_win:
-    reward = money * match_count
-    embed.add_field(
-        name="🏆 THẮNG",
-        value=f"Trúng {match_count} con! Nhận +{reward}$",
-        inline=False,
-    )
-  else:
-    embed.add_field(
-        name="MẤT SẠCH!", value=f"Thua -{money}$", inline=False
-    )
-
-  await ctx.send(embed=embed)
-
-
-# Chạy bot
-token = os.getenv("BOT_TOKEN")
-if token:
-  bot.run(token)
-else:
-  print("Lỗi: Chưa thiết lập biến môi trường BOT_TOKEN!")
-      
+# Dán Token của bạn vào đây:
+client.run('MTUzNTg1NTE2NDcwMTgwNjY4Mw.Gk2jJM.GWEYHx3BsB4j86h9qgyNQakjAbJ4h4t5TU-Pq0')
