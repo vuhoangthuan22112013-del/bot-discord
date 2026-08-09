@@ -35,18 +35,16 @@ def get_user(uid):
 async def on_ready():
     print(f"✅ BOT ĐÃ SẴN SÀNG: {bot.user}")
 
-# --- LỆNH MENU GIAO DIỆN KHUNG VUÔNG VIỀN VÀNG (!menu) ---
 @bot.command(name="menu", aliases=["help", "giup"])
 async def menu_cmd(ctx):
     cd = check_spam(ctx.author.id, "menu", 1.5)
     if cd > 0:
         return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}**s nữa!")
 
-    # Tạo khung Embed hình vuông có sọc màu vàng bên trái (mã màu: 0xFFD700)
     embed = discord.Embed(
         title="🎰 HỆ THỐNG GAME & NGÂN HÀNG BET88",
         description="Dưới đây là danh sách các lệnh bạn có thể sử dụng:",
-        color=0xFFD700 # Màu vàng
+        color=0xFFD700
     )
     
     embed.add_field(
@@ -74,7 +72,6 @@ async def menu_cmd(ctx):
     embed.set_footer(text="Gõ lệnh trực tiếp vào kênh chat để bắt đầu!")
     await ctx.send(embed=embed)
 
-# --- LỆNH XEM VÍ (!vi) ---
 @bot.command(name="vi", aliases=["money", "bal"])
 async def vi_cmd(ctx, member: discord.Member = None):
     cd = check_spam(ctx.author.id, "vi", 1.5)
@@ -91,7 +88,6 @@ async def vi_cmd(ctx, member: discord.Member = None):
     )
     await ctx.send(msg)
 
-# --- LỆNH GỬI TIỀN (!gui) ---
 @bot.command(name="gui")
 async def gui_cmd(ctx, amount: str = None):
     cd = check_spam(ctx.author.id, "gui", 1.5)
@@ -117,7 +113,6 @@ async def gui_cmd(ctx, amount: str = None):
     u["bank"] += val
     await ctx.send(f"🏦 Đã gửi thành công `{val:,} $` vào két sắt ngân hàng!")
 
-# --- LỆNH RÚT TIỀN (!rut) ---
 @bot.command(name="rut")
 async def rut_cmd(ctx, amount: str = None):
     cd = check_spam(ctx.author.id, "rut", 1.5)
@@ -143,7 +138,6 @@ async def rut_cmd(ctx, amount: str = None):
     u["cash"] += val
     await ctx.send(f"💸 Đã rút thành công `{val:,} $` từ két sắt về ví!")
 
-# --- LỆNH CHUYỂN TIỀN (!chuyen) ---
 @bot.command(name="chuyen", aliases=["pay", "give"])
 async def chuyen_cmd(ctx, member: discord.Member = None, amount: int = None):
     cd = check_spam(ctx.author.id, "chuyen", 1.5)
@@ -164,7 +158,6 @@ async def chuyen_cmd(ctx, member: discord.Member = None, amount: int = None):
     u_receiver["cash"] += amount
     await ctx.send(f"🤝 **{ctx.author.name}** đã chuyển thành công `{amount:,} $` cho **{member.name}**!")
 
-# --- LỆNH TÀI XỈU (!tx) ---
 @bot.command(name="tx", aliases=["taixiu"])
 async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "tx", 1.5)
@@ -196,7 +189,6 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(content=res_text)
 
-# --- LỆNH QUAY SLOT (!quay) ---
 @bot.command(name="quay")
 async def quay_cmd(ctx, bet: int = None):
     cd = check_spam(ctx.author.id, "quay", 1.5)
@@ -236,7 +228,6 @@ async def quay_cmd(ctx, bet: int = None):
         u["cash"] -= bet
         await msg.edit(content=f"🎰 Vòng quay: `[ {r1} ] [ {r2} ] [ {r3} ]`\n😢 **Chúc bạn may mắn lần sau!** Mất `-{bet:,} $`")
 
-# --- LỆNH XÓC ĐĨA (!xd) ---
 @bot.command(name="xd", aliases=["xocdia"])
 async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "xd", 1.5)
@@ -268,7 +259,6 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(content=res_text)
 
-# --- LỆNH BẦU CUA (!bc) ---
 @bot.command(name="bc", aliases=["baucua"])
 async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     cd = check_spam(ctx.author.id, "bc", 1.5)
@@ -304,4 +294,4 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
 
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-            
+    
