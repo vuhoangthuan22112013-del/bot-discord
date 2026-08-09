@@ -1,7 +1,6 @@
 import asyncio
 import os
 import random
-import time
 import discord
 from discord.ext import commands
 
@@ -10,7 +9,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 users = {}
-cooldowns = {}
 
 # Quản lý phiên tài xỉu chung cho toàn server
 tx_room = {
@@ -39,9 +37,8 @@ async def on_ready():
 @bot.command(name="vi", aliases=["bal"])
 async def vi_cmd(ctx):
   u = get_user(ctx.author.id, ctx.author.name)
-
-  # Phân loại hạng thẻ theo số tiền mặt
   cash = u["cash"]
+
   if cash < 10000:
     rank = "👤 Người chơi Thường\n🐓 Gà Công Nghiệp 🐥"
   elif cash < 50000:
@@ -58,7 +55,7 @@ async def vi_cmd(ctx):
   await ctx.send(embed=embed)
 
 
-# --- 2. LỆNH ĐIỂM DANH / NHẬN TIỀN (!diemdanh) ---
+# --- 2. LỆNH ĐIỂM DANH (!diemdanh) ---
 @bot.command(name="diemdanh", aliases=["diemdanhi", "nhantien"])
 async def diemdanh_cmd(ctx):
   u = get_user(ctx.author.id, ctx.author.name)
@@ -70,7 +67,7 @@ async def diemdanh_cmd(ctx):
   )
 
 
-# --- 3. LỆNH QUAY SLOT (!quay) ---
+# --- 3. LỆNH QUAY SLOT (!quay) - HIỆU ỨNG TỪ TỪ GIỐNG VIDEO ---
 @bot.command(name="quay")
 async def quay_cmd(ctx, amount: int = 100):
   user_id = ctx.author.id
@@ -84,17 +81,24 @@ async def quay_cmd(ctx, amount: int = 100):
   u["cash"] -= amount
   fruits = ["🍋", "🔔", "7️⃣", "🍒", "💎"]
 
-  # Gửi hiệu ứng máy đang quay giống trong video
+  # Gửi tin nhắn khung ban đầu
   msg = await ctx.send(
-      f"🎰 **MÁY SLOT BET88**\n"
-      f"Máy đang giật...\n"
-      f"[ `?` | `?` | `?` ]"
+      "🎰 **MÁY SLOT BET88**\nKẾT QUẢ\n[ `?` | `?` | `?` ]\nThông"
+      " báo\n🔄 Đang quay..."
   )
-  await asyncio.sleep(1.2)
 
+  # Hiệu ứng đổi khung liên tục tạo cảm giác quay thật
+  for _ in range(3):
+    await asyncio.sleep(0.4)
+    r1, r2, r3 = random.choice(fruits), random.choice(fruits), random.choice(fruits)
+    await msg.edit(
+        content=f"🎰 **MÁY SLOT BET88**\nKẾT QUẢ\n[ `{r1}` | `{r2}` | `{r3}` ]\nThông"
+        " báo\n🔄 Đang quay..."
+    )
+
+  # Kết quả cuối cùng
   res = [random.choice(fruits) for _ in range(3)]
 
-  # Kiểm tra thắng thua (3 ô giống nhau trúng to, 2 ô trúng nhỏ hoặc mất trắng)
   if res[0] == res[1] == res[2]:
     win_amount = amount * 10
     u["cash"] += win_amount
@@ -122,11 +126,11 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
   user_id = ctx.author.id
   u = get_user(user_id, ctx.author.name)
 
-  # Trường hợp 1: Gõ lệnh !tx đơn thuần để mở phiên mới
+  # Nếu chỉ gõ !tx -> Mở phiên mới
   if not choice:
     if tx_room["active"]:
       return await ctx.send(
-          "⚠️ Đang có một phiên Tài Xỉu diễn ra rồi! Hãy nhanh tay đặt cược."
+          "⚠️ Đang có một phiên Tài Xỉu diễn ra! Hãy nhanh tay đặt cược."
       )
 
     tx_room["active"] = True
@@ -135,14 +139,13 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
     msg = await ctx.send(
         f"🎲 **SÒNG TÀI XỈU BET88** 🎲\n"
         f"👤 {ctx.author.name} đã mở bát!\n"
-        f"👉 Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
+        f"👉 Gõ `!tx <tai/xiu> <tiền>` để theo cược!\n"
         f"⏱️ Thời gian: **30 giây**\n\n"
         f"💰 Tổng TÀI: `0$` | Tổng XỈU: `0$`"
     )
     tx_room["msg"] = msg
 
-    # Đếm ngược thời gian giống hệt video (30s -> 20s -> 10s)
-    countdown_steps = [10, 10, 10]
+    # Đếm ngược 30 giây (mỗi 10 giây cập nhật 1 lần)
     for remaining in [20, 10, 0]:
       await asyncio.sleep(10)
       if not tx_room["active"]:
@@ -163,7 +166,7 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
         await msg.edit(
             content=f"🎲 **SÒNG TÀI XỈU BET88** 🎲\n"
             f"👤 {ctx.author.name} đã mở bát!\n"
-            f"👉 Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
+            f"👉 Gõ `!tx <tai/xiu> <tiền>` để theo cược!\n"
             f"⏱️ Thời gian còn lại: **{remaining} giây**\n\n"
             f"💰 Tổng TÀI: `{t_tai:,}$` | Tổng XỈU: `{t_xiu:,}$`"
         )
@@ -175,7 +178,10 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
     tx_room["active"] = False
 
     try:
-      await msg.edit(content="🎲 **NHÀ CÁI BET88 ĐANG XÓC BÁT...** 🎲\n[ ? ] - [ ? ] - [ ? ]")
+      await msg.edit(
+          content="🎲 **SÒNG TÀI XỈU BET88** 🎲\nĐang lắc bát...\n[ ? ] - [ ? ]"
+          " - [ ? ]"
+      )
     except:
       pass
 
@@ -186,7 +192,7 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
     ket_qua = "tai" if total >= 11 else "xiu"
     kq_text = "TÀI" if ket_qua == "tai" else "XỈU"
 
-    thang_str = "Không có\n"
+    thang_str = ""
     thua_str = ""
 
     for uid, data in tx_room["bets"].items():
@@ -197,20 +203,20 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
 
       if p_choice == ket_qua:
         player_u["cash"] += bet_amt * 2
-        if thang_str == "Không có\n":
-          thang_str = ""
         thang_str += f"• {p_name}: +`{bet_amt * 2:,}$`\n"
       else:
         thua_str += f"• {p_name}: -`{bet_amt:,}$`\n"
 
+    if not thang_str:
+      thang_str = "Không có\n"
     if not thua_str:
       thua_str = "Không có\n"
 
     result_message = (
-        f"🏮 **MỞ BẮT BET88**\n"
+        f"🎲 **MỞ BẮT BET88**\n"
         f"Kết quả: `[ {d1} ] - [ {d2} ] - [ {d3} ]`\n"
-        f"🎯 **{total} Điểm ({kq_text})**\n\n"
-        f"🌿 **THẮNG:**\n{thang_str}\n"
+        f"🎯 **{total} ĐIỂM ({kq_text})**\n\n"
+        f"✨ **THẮNG:**\n{thang_str}\n"
         f"💀 **THUA:**\n{thua_str}"
     )
 
@@ -220,13 +226,17 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
       await ctx.send(result_message)
     return
 
-  # Trường hợp 2: Người chơi đặt cược !tx tai/xiu [tiền]
+  # Nếu người chơi gõ !tx tai/xiu [tiền]
   choice = choice.lower()
   if choice not in ["tai", "xiu"]:
-    return await ctx.send("❌ Cú pháp sai! Dùng: `!tx tai 500` hoặc `!tx xiu 500`")
+    return await ctx.send(
+        "❌ Cú pháp sai! Dùng: `!tx tai <tiền>` hoặc `!tx xiu <tiền>`"
+    )
 
   if not tx_room["active"]:
-    return await ctx.send("❌ Chưa có phiên Tài Xỉu nào! Gõ lệnh `!tx` để mở bàn.")
+    return await ctx.send(
+        "❌ Chưa có bàn Tài Xỉu nào mở! Hãy gõ `!tx` để mở bàn mới."
+    )
 
   if not amount:
     return await ctx.send("❌ Vui lòng nhập số tiền cược!")
@@ -244,6 +254,7 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
 
   u["cash"] -= bet_val
 
+  # Mỗi người chỉ được đặt 1 lần hoặc dồn tiền vào cửa đã chọn trong phiên
   if user_id in tx_room["bets"]:
     tx_room["bets"][user_id]["amount"] += bet_val
     tx_room["bets"][user_id]["choice"] = choice
@@ -264,30 +275,24 @@ async def tx_cmd(ctx, choice: str = None, amount: str = None):
 async def xoc_dia(ctx, choice: str, amount: int = 100):
   user_id = ctx.author.id
   u = get_user(user_id, ctx.author.name)
-
   choice = choice.lower()
-  # Hỗ trợ chan/le hoặc do/trang
+
   if choice not in ["chan", "le", "do", "trang"]:
-    return await ctx.send(
-        "⚠️ Cú pháp: `!xd chan <tiền>` hoặc `!xd le`, `!xd do`, `!xd trang`"
-    )
+    return await ctx.send("⚠️ Cú pháp: `!xd chan 100` hoặc `le`, `do`, `trang`")
 
   if u["cash"] < amount:
     return await ctx.send("❌ Bạn không đủ tiền mặt!")
 
   u["cash"] -= amount
   msg = await ctx.send(
-      f"🥣 **XÓC ĐĨA BET88**\n*Xóc... xóc... xóc...*\n[ Đặt bát xuống bàn... ]"
+      f"🥣 **XÓC ĐĨA BET88**\n4 Đồng xu\n⚪ ⚪ ⚪ ⚪\n*Xóc... xóc... xóc...*"
   )
   await asyncio.sleep(2.0)
 
-  # Tạo kết quả 4 đồng xu (Đỏ / Trắng)
   coins = [random.choice(["🔴", "⚪"]) for _ in range(4)]
   red_count = coins.count("🔴")
-
   ket_qua_chan_le = "chan" if red_count % 2 == 0 else "le"
 
-  # Kiểm tra thắng thua
   win = False
   if choice in ["chan", "le"] and choice == ket_qua_chan_le:
     win = True
@@ -305,8 +310,10 @@ async def xoc_dia(ctx, choice: str, amount: int = 100):
 
   await msg.edit(
       content=f"🥣 **XÓC ĐĨA BET88**\n"
-      f"Kết quả: {coins[0]} {coins[1]} {coins[2]} {coins[3]} "
-      f"({red_count} Đỏ - {4 - red_count} Trắng)\n"
+      f"4 Đồng xu\n"
+      f"{coins[0]} {coins[1]} {coins[2]} {coins[3]}\n"
+      f"Kết quả\n"
+      f"➔ {ket_qua_chan_le.upper()} ({red_count} Đỏ)\n"
       f"{status}"
   )
 
@@ -323,7 +330,7 @@ async def bau_cua(ctx, choice: str, amount: int = 100):
   if choice not in symbols:
     return await ctx.send(
         "⚠️ Chọn linh vật: `bau`, `cua`, `tom`, `ca`, `ga`, `nai`\nVí dụ: `!bc"
-        " cua 500`"
+        " cua 100`"
     )
 
   if u["cash"] < amount:
@@ -331,7 +338,7 @@ async def bau_cua(ctx, choice: str, amount: int = 100):
 
   u["cash"] -= amount
   msg = await ctx.send(
-      f"🏮 **BẦU CUA BET88**\nNhận cược `{amount:,}$` vào **{choice.upper()}**.\n*Đang lắc...*"
+      f"🏮 **BẦU CUA BET88**\nTrạng thái\nĐang ủ bát...\n[ ? ] [ ? ] [ ? ]"
   )
   await asyncio.sleep(2.0)
 
@@ -341,19 +348,18 @@ async def bau_cua(ctx, choice: str, amount: int = 100):
   matches = res_keys.count(choice)
   if matches > 0:
     win_amt = amount * matches
-    u["cash"] += amount + win_amt  # Hoàn vốn + tiền thưởng theo số con xuất hiện
-    status = f"🎁 **TRÚNG {matches} NHÁY!** Ăn `+{win_amt:,}$`"
+    u["cash"] += amount + win_amt  # Hoàn vốn + tiền thưởng theo số con
+    status = f"✨ **TRÚNG {matches} CON!** `+{win_amt:,}$`"
   else:
     status = f"💀 **MẤT SẠCH!** `-{amount:,}$`"
 
   await msg.edit(
-      content=f"🏮 **KẾT QUẢ BẦU CUA**\n"
+      content=f"🏮 **BẦU CUA BET88**\nMỞ BẮT\nTổng kết\n"
       f"[ {res_icons[0]} ] [ {res_icons[1]} ] [ {res_icons[2]} ]\n"
       f"{status}"
   )
 
 
-# Chạy bot qua biến môi trường BOT_TOKEN
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-      
+    
