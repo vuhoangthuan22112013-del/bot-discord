@@ -12,6 +12,17 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 users = {}
 
+# Lưu trữ thời gian cooldown thủ công để chống spam tuyệt đối
+cooldowns = {}
+
+def check_cooldown(user_id, command_name, seconds):
+    now = time.time()
+    key = f"{user_id}_{command_name}"
+    if key in cooldowns and now - cooldowns[key] < seconds:
+        return round(seconds - (now - cooldowns[key]), 1)
+    cooldowns[key] = now
+    return 0
+
 # Biến quản lý phiên Tài Xỉu
 tx_session = {
     "active": False,
@@ -24,8 +35,7 @@ def get_user(uid):
         users[uid] = {
             "cash": 10000,
             "bank": 0,
-            "last_daily": 0,
-            "last_interest": time.time()
+            "last_daily": 0
         }
     return users[uid]
 
@@ -33,16 +43,13 @@ def get_user(uid):
 async def on_ready():
     print(f"✅ BOT ONLINE THÀNH CÔNG: {bot.user}")
 
-# --- CẢNH BÁO SPAM / COOLDOWN (Gõ từ từ thôi con vợ!) ---
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.CommandOnCooldown):
-        await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{error.retry_after:.1f}s** nữa!")
-
 # --- MENU TRỢ GIÚP ---
 @bot.command(name="menu", aliases=["trogiup"])
-@commands.cooldown(1, 2, commands.BucketType.user)
 async def menu_cmd(ctx):
+    cd = check_cooldown(ctx.author.id, "menu", 2)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
     embed = discord.Embed(
         title="🎰 CASINO BET88 UY TÍN 🎰",
         description="Chào mừng bạn đến với hệ thống giải trí đổi thưởng!",
@@ -55,25 +62,27 @@ async def menu_cmd(ctx):
     )
     embed.add_field(
         name="🎰 CASINO SOLO",
-        value="`!quay [tiền]`\n`!bc [bau/cua/tom/ca/ga/nai] [tiền]`\n`!xd [chan/le] [tiền]`\n`!coinflip [ngua/up] [tiền]`",
+        value="`!quay [tiền]`\n`!bc [bau/cua/tom/ca/ga/nai] [tiền]`\n`!xd [chan/le] [tiền]`",
         inline=False
     )
     embed.add_field(
         name="🏛️ HỆ THỐNG",
-        value="`!vi`, `!gui [tiền]`, `!rut [tiền]`, `!nhanlai`, `!chuyen @User [tiền]`, `!diemdanh`, `!bxh`",
+        value="`!vi` hoặc `!vi @User` : Xem ví tiền\n`!diemdanh` : Nhận quà mỗi ngày",
         inline=False
     )
-    embed.set_footer(text="Cảnh báo: Spam lệnh sẽ bị nhắc nhở!")
     await ctx.send(embed=embed)
 
-# --- SÒNG TÀI XỈU BET88 (CHUẨN VIDEO) ---
+# --- SÒNG TÀI XỈU BET88 ---
 @bot.command(name="tx", aliases=["taixiu"])
-@commands.cooldown(1, 1, commands.BucketType.user)
 async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     global tx_session
     
-    # 1. Nếu gõ !tx không tham số -> Khởi tạo phiên
+    # 1. Khởi tạo phiên
     if not choice and not bet:
+        cd = check_cooldown(ctx.author.id, "tx_mo", 3)
+        if cd > 0:
+            return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
         if tx_session["active"]:
             return await ctx.send(f"⏳ Phiên Tài Xỉu đang diễn ra! Còn **{tx_session['time_left']}s**.")
         
@@ -90,7 +99,6 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         embed.add_field(name="📊 Tổng TÀI / XỈU", value="Tổng TÀI: **0$** | Tổng XỈU: **0$**", inline=False)
         msg = await ctx.send(embed=embed)
         
-        # Đếm ngược 30s -> 20s -> 10s -> Hết giờ
         for t in [20, 10, 0]:
             await asyncio.sleep(10)
             tx_session["time_left"] = t
@@ -128,7 +136,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         res_embed.add_field(name="💸 THUA", value="\n".join(thua_list) if thua_list else "Không có", inline=False)
         return await ctx.send(embed=res_embed)
 
-    # 2. Nếu gõ !tx tai/xiu [tiền] -> Đặt cược
+    # 2. Đặt cược
     if not tx_session["active"]:
         return await ctx.send("❌ Chưa có phiên Tài Xỉu nào! Gõ `!tx` để mở phiên mới.")
     
@@ -146,10 +154,13 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
     tx_session["bets"][uid] = {"choice": choice.lower(), "bet": bet, "name": ctx.author.name}
     await ctx.send(f"✅ **{ctx.author.name}** đã cược **{bet:,}$** vào **{choice.upper()}**!")
 
-# --- MÁY SLOT / QUAY (CHUẨN VIDEO) ---
+# --- MÁY SLOT / QUAY ---
 @bot.command(name="quay")
-@commands.cooldown(1, 2, commands.BucketType.user)
 async def quay_cmd(ctx, bet: int = None):
+    cd = check_cooldown(ctx.author.id, "quay", 2)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
     if not bet or bet <= 0:
         return await ctx.send("❌ Cú pháp: `!quay [tiền_cược]`")
     u = get_user(ctx.author.id)
@@ -158,22 +169,16 @@ async def quay_cmd(ctx, bet: int = None):
 
     symbols = ["🍋", "🍒", "🔔", "💎", "7️⃣"]
     
-    # Tạo hiệu ứng Máy đang quay...
     embed = discord.Embed(title="🎰 MÁY SLOT BET88", color=0xF1C40F)
     embed.add_field(name="Máy đang quay...", value="`[ 🍋 | 🔔 | 🍋 ]`", inline=False)
     msg = await ctx.send(embed=embed)
     
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.8)
     embed.set_field_at(0, name="Máy đang quay...", value="`[ 🔔 | 🔔 | 🍒 ]`", inline=False)
     await msg.edit(embed=embed)
     
-    await asyncio.sleep(1)
-    embed.set_field_at(0, name="Máy đang quay...", value="`[ 🔔 | 🔔 | 💎 ]`", inline=False)
-    await msg.edit(embed=embed)
+    await asyncio.sleep(0.8)
     
-    await asyncio.sleep(1)
-    
-    # Chốt kết quả (Tỷ lệ trúng 36%)
     is_win = random.random() < 0.36
     if is_win:
         s = random.choice(symbols)
@@ -185,7 +190,7 @@ async def quay_cmd(ctx, bet: int = None):
     max_f = max(cnt.values())
     
     res_embed = discord.Embed(title="🎰 MÁY SLOT BET88", color=0x2ECC71 if max_f > 1 else 0xE74C3C)
-    res_embed.add_field(name="KẾT QUẢ", value=f"`[ {r1} | {r2} | {r3} ]`", inline=False)
+    res_embed.add_field(name="KẾT QUẢ", value=`[ {r1} | {r2} | {r3} ]`, inline=False)
     
     if max_f == 3:
         win = bet * 5
@@ -201,10 +206,13 @@ async def quay_cmd(ctx, bet: int = None):
         
     await msg.edit(embed=res_embed)
 
-# --- BẦU CUA BET88 (CHUẨN VIDEO) ---
+# --- BẦU CUA BET88 ---
 @bot.command(name="bc", aliases=["baucua"])
-@commands.cooldown(1, 2, commands.BucketType.user)
 async def baucua_cmd(ctx, choice: str = None, bet: int = None):
+    cd = check_cooldown(ctx.author.id, "bc", 2)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
     animals = {"bau": "🥒", "cua": "🦀", "tom": "🦐", "ca": "🐟", "ga": "🐓", "nai": "🦌"}
     if not choice or choice.lower() not in animals or not bet or bet <= 0:
         return await ctx.send("❌ Cú pháp: `!bc [bau/cua/tom/ca/ga/nai] [tiền]`")
@@ -220,8 +228,6 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     await asyncio.sleep(1)
     embed.set_field_at(0, name="Trạng thái", value="*Từ từ hé bát...*", inline=False)
     await msg.edit(embed=embed)
-    
-    await asyncio.sleep(1)
     
     keys = list(animals.keys())
     d1, d2, d3 = random.choice(keys), random.choice(keys), random.choice(keys)
@@ -240,10 +246,13 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(embed=res_embed)
 
-# --- XÓC ĐĨA BET88 (CHUẨN VIDEO) ---
+# --- XÓC ĐĨA BET88 ---
 @bot.command(name="xd", aliases=["xocdia"])
-@commands.cooldown(1, 2, commands.BucketType.user)
 async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
+    cd = check_cooldown(ctx.author.id, "xd", 2)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
     if not choice or choice.lower() not in ["chan", "le"] or not bet or bet <= 0:
         return await ctx.send("❌ Cú pháp: `!xd [chan/le] [tiền]`")
         
@@ -258,8 +267,6 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     await asyncio.sleep(1)
     embed.set_field_at(0, name="Trạng thái", value="*Đặt bát xuống bàn...*", inline=False)
     await msg.edit(embed=embed)
-    
-    await asyncio.sleep(1)
     
     red_count = sum([random.choice([0, 1]) for _ in range(4)])
     ket_qua = "chan" if red_count % 2 == 0 else "le"
@@ -278,19 +285,28 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
         
     await msg.edit(embed=res_embed)
 
-# --- VÍ & ĐIỂM DANH & HỆ THỐNG ---
+# --- XEM VÍ (CỦA MÌNH HOẶC CỦA NGƯỜI KHÁC QUA @TAG) ---
 @bot.command(name="vi", aliases=["money", "bal"])
-@commands.cooldown(1, 2, commands.BucketType.user)
-async def vi_cmd(ctx):
-    u = get_user(ctx.author.id)
-    embed = discord.Embed(title=f"💳 TÀI KHOẢN: {ctx.author.name.upper()}", color=0x3498DB)
+async def vi_cmd(ctx, member: discord.Member = None):
+    cd = check_cooldown(ctx.author.id, "vi", 2)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
+    target = member if member else ctx.author
+    u = get_user(target.id)
+    
+    embed = discord.Embed(title=f"💳 TÀI KHOẢN: {target.name.upper()}", color=0x3498DB)
     embed.add_field(name="💵 Tiền mặt", value=f"`{u['cash']:,}$`", inline=False)
     embed.add_field(name="🏦 Két sắt", value=f"`{u['bank']:,}$`", inline=False)
     await ctx.send(embed=embed)
 
+# --- ĐIỂM DANH MỖI NGÀY ---
 @bot.command(name="diemdanh", aliases=["daily"])
-@commands.cooldown(1, 2, commands.BucketType.user)
 async def diemdanh_cmd(ctx):
+    cd = check_cooldown(ctx.author.id, "diemdanh", 2)
+    if cd > 0:
+        return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi con vợ! Đợi **{cd}s** nữa!")
+
     u = get_user(ctx.author.id)
     now = time.time()
     if now - u["last_daily"] < 43200: # 12 tiếng
@@ -300,8 +316,8 @@ async def diemdanh_cmd(ctx):
     rw = random.randint(1000, 3000)
     u["cash"] += rw
     u["last_daily"] = now
-    await ctx.send(f"🎁 **{ctx.author.name}** Điểm danh! `+{rw:,}$`")
+    await ctx.send(f"🎁 **{ctx.author.name}** Điểm danh thành công! Nhận ngay `+{rw:,}$`")
 
 token = os.getenv("BOT_TOKEN")
 bot.run(token)
-        
+    
