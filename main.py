@@ -1,13 +1,18 @@
 import os
-import random
 import asyncio
+import random
 import discord
 from discord.ext import commands
 
+# ==============================
+# TOKEN
+# ==============================
+
 TOKEN = os.getenv("BOT_TOKEN")
 
-if not TOKEN:
-    raise RuntimeError("Chưa có BOT_TOKEN trong Secrets/Environment Variables!")
+# ==============================
+# DISCORD BOT
+# ==============================
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -27,22 +32,43 @@ def get_money(user_id):
     return users[user_id]
 
 
+# ==============================
+# BOT TỰ ONLINE
+# ==============================
+
 @bot.event
 async def on_ready():
-    print(f"✅ BOT ONLINE: {bot.user}")
-    print("🎮 Gõ !help để xem menu")
+    print("================================")
+    print("🤖 BOT ĐÃ ONLINE")
+    print(f"👤 {bot.user}")
+    print(f"🆔 {bot.user.id}")
+    print("🎮 Prefix: !")
+    print("================================")
 
+    # Đặt trạng thái Online/đang chơi
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Game(
+            name="🎰 !help | Tiền ảo"
+        )
+    )
+
+
+# ==============================
+# MENU
+# ==============================
 
 @bot.command(name="help")
 async def help_cmd(ctx):
+
     embed = discord.Embed(
         title="🎰 CASINO GIẢI TRÍ 🎰",
-        description="💰 Sử dụng tiền ảo trong bot",
+        description="💰 Hệ thống tiền ảo",
         color=discord.Color.blurple()
     )
 
     embed.add_field(
-        name="🎲 CASINO",
+        name="🎲 TRÒ CHƠI",
         value=(
             "`!tx tai 100`\n"
             "`!tx xiu 100`\n"
@@ -54,7 +80,7 @@ async def help_cmd(ctx):
     )
 
     embed.add_field(
-        name="🏦 HỆ THỐNG",
+        name="💰 HỆ THỐNG",
         value=(
             "`!vi` — Xem tiền\n"
             "`!daily` — Nhận tiền\n"
@@ -66,97 +92,141 @@ async def help_cmd(ctx):
     await ctx.send(embed=embed)
 
 
+# ==============================
+# VÍ
+# ==============================
+
 @bot.command(name="vi")
 async def vi(ctx):
+
     money = get_money(ctx.author.id)
 
     await ctx.send(
-        f"💳 **VÍ CỦA {ctx.author.display_name}**\n"
+        f"💳 **VÍ CỦA {ctx.author.display_name}**\n\n"
         f"💰 Tiền ảo: `{money:,}`"
     )
 
 
+# ==============================
+# DAILY
+# ==============================
+
 @bot.command(name="daily")
 async def daily(ctx):
+
     users[ctx.author.id] = get_money(ctx.author.id) + 1000
 
     await ctx.send(
-        f"🎁 {ctx.author.mention} nhận **1,000 tiền ảo**!"
+        f"🎁 {ctx.author.mention}\n"
+        f"Bạn nhận được **1,000 tiền ảo**!"
     )
 
 
-@bot.command(name="tx", aliases=["taixiu"])
+# ==============================
+# TÀI XỈU
+# ==============================
+
+@bot.command(name="tx")
 async def tx(ctx, choice=None, bet=None):
 
-    if choice not in ("tai", "xiu"):
+    if choice not in ["tai", "xiu"]:
         return await ctx.send(
             "❌ Dùng: `!tx tai 100` hoặc `!tx xiu 100`"
         )
 
     try:
         bet = int(bet)
-    except (TypeError, ValueError):
-        return await ctx.send("❌ Tiền cược phải là số!")
+    except:
+        return await ctx.send(
+            "❌ Tiền cược phải là số!"
+        )
 
     if bet <= 0:
-        return await ctx.send("❌ Tiền cược phải lớn hơn 0!")
+        return await ctx.send(
+            "❌ Tiền cược phải lớn hơn 0!"
+        )
 
     money = get_money(ctx.author.id)
 
     if money < bet:
-        return await ctx.send("❌ Bạn không đủ tiền ảo!")
+        return await ctx.send(
+            "❌ Bạn không đủ tiền ảo!"
+        )
 
     msg = await ctx.send(
-        "🎲 **TÀI XỈU**\n"
+        "🎲 **TÀI XỈU**\n\n"
         "[ ❔ ] [ ❔ ] [ ❔ ]\n"
         "⏳ Đang lắc..."
     )
 
     await asyncio.sleep(1)
 
-    dice = [
-        random.randint(1, 6),
-        random.randint(1, 6),
-        random.randint(1, 6)
-    ]
+    d1 = random.randint(1, 6)
+    d2 = random.randint(1, 6)
+    d3 = random.randint(1, 6)
 
-    total = sum(dice)
+    total = d1 + d2 + d3
+
     result = "tai" if total >= 11 else "xiu"
-    result_text = "TÀI 🔴" if result == "tai" else "XỈU 🔵"
 
-    if choice == result:
+    if result == choice:
+
         users[ctx.author.id] += bet
-        status = f"🎉 **THẮNG!** +`{bet:,}` tiền ảo"
+
+        result_text = (
+            f"🎉 **THẮNG!**\n"
+            f"💰 +`{bet:,}` tiền ảo"
+        )
+
     else:
+
         users[ctx.author.id] -= bet
-        status = f"💸 **THUA!** -`{bet:,}` tiền ảo"
+
+        result_text = (
+            f"💸 **THUA!**\n"
+            f"💰 -`{bet:,}` tiền ảo"
+        )
 
     await msg.edit(
         content=(
             "🎲 **TÀI XỈU**\n\n"
-            f"[ **{dice[0]}** ] [ **{dice[1]}** ] [ **{dice[2]}** ]\n\n"
+            f"[ **{d1}** ] "
+            f"[ **{d2}** ] "
+            f"[ **{d3}** ]\n\n"
             f"➕ Tổng: **{total}**\n"
-            f"🎯 Kết quả: **{result_text}**\n\n"
-            f"{status}"
+            f"🎯 Kết quả: **{result.upper()}**\n\n"
+            f"{result_text}"
         )
     )
 
+
+# ==============================
+# SLOT
+# ==============================
 
 @bot.command(name="quay")
 async def quay(ctx, bet=None):
 
     try:
         bet = int(bet)
-    except (TypeError, ValueError):
-        return await ctx.send("❌ Dùng: `!quay 100`")
+    except:
+        return await ctx.send(
+            "❌ Dùng: `!quay 100`"
+        )
 
     if bet <= 0:
-        return await ctx.send("❌ Tiền cược phải lớn hơn 0!")
+        return await ctx.send(
+            "❌ Tiền cược không hợp lệ!"
+        )
 
     money = get_money(ctx.author.id)
 
     if money < bet:
-        return await ctx.send("❌ Bạn không đủ tiền ảo!")
+        return await ctx.send(
+            "❌ Bạn không đủ tiền ảo!"
+        )
+
+    symbols = ["🍒", "🍋", "🔔", "💎"]
 
     msg = await ctx.send(
         "🎰 **SLOT**\n"
@@ -165,104 +235,87 @@ async def quay(ctx, bet=None):
 
     await asyncio.sleep(1)
 
-    symbols = ["🍒", "🍋", "🔔", "💎"]
-
-    result = [random.choice(symbols) for _ in range(3)]
+    a = random.choice(symbols)
+    b = random.choice(symbols)
+    c = random.choice(symbols)
 
     await msg.edit(
         content=(
             "🎰 **SLOT**\n"
-            f"[ {result[0]} ] [ {result[1]} ] [ {result[2]} ]"
+            f"[ {a} ] [ {b} ] [ {c} ]"
         )
     )
 
-    if result[0] == result[1] == result[2]:
-        prize = bet * 3
-        users[ctx.author.id] += prize
-        await ctx.send(f"💎 **JACKPOT!** +`{prize:,}` tiền ảo!")
+    if a == b == c:
 
-    elif len(set(result)) < 3:
-        users[ctx.author.id] += bet
-        await ctx.send(f"✨ **THẮNG!** +`{bet:,}` tiền ảo!")
+        win = bet * 3
+        users[ctx.author.id] += win
 
-    else:
-        users[ctx.author.id] -= bet
-        await ctx.send(f"💸 **THUA!** -`{bet:,}` tiền ảo!")
-
-
-@bot.command(name="coinflip")
-async def coinflip(ctx, choice=None, bet=None):
-
-    if choice not in ("ngua", "sap"):
-        return await ctx.send(
-            "❌ Dùng: `!coinflip ngua 100` hoặc `!coinflip sap 100`"
+        await ctx.send(
+            f"💎 **JACKPOT!** +`{win:,}` tiền ảo!"
         )
 
-    try:
-        bet = int(bet)
-    except (TypeError, ValueError):
-        return await ctx.send("❌ Tiền cược phải là số!")
+    elif a == b or b == c or a == c:
 
-    if bet <= 0:
-        return await ctx.send("❌ Tiền cược không hợp lệ!")
-
-    money = get_money(ctx.author.id)
-
-    if money < bet:
-        return await ctx.send("❌ Bạn không đủ tiền ảo!")
-
-    result = random.choice(["ngua", "sap"])
-
-    if result == choice:
         users[ctx.author.id] += bet
-        text = f"🪙 **{result.upper()}**\n🎉 Thắng `+{bet:,}` tiền ảo!"
+
+        await ctx.send(
+            f"✨ **THẮNG!** +`{bet:,}` tiền ảo!"
+        )
+
     else:
+
         users[ctx.author.id] -= bet
-        text = f"🪙 **{result.upper()}**\n💸 Thua `-{bet:,}` tiền ảo!"
 
-    await ctx.send(text)
+        await ctx.send(
+            f"💸 **THUA!** -`{bet:,}` tiền ảo!"
+        )
 
+
+# ==============================
+# BẢNG XẾP HẠNG
+# ==============================
 
 @bot.command(name="bxh")
 async def bxh(ctx):
 
-    if not users:
-        return await ctx.send("🏆 Chưa có người chơi.")
-
     ranking = sorted(
         users.items(),
-        key=lambda item: item[1],
+        key=lambda x: x[1],
         reverse=True
     )
 
     text = "🏆 **BẢNG XẾP HẠNG**\n\n"
 
-    for i, (user_id, money) in enumerate(ranking[:10], 1):
-        member = ctx.guild.get_member(user_id)
-        name = member.display_name if member else "Người chơi"
+    for i, (user_id, money) in enumerate(
+        ranking[:10],
+        1
+    ):
 
-        text += f"**{i}.** {name} — `{money:,}` 💰\n"
+        member = ctx.guild.get_member(user_id)
+
+        name = (
+            member.display_name
+            if member
+            else "Người chơi"
+        )
+
+        text += (
+            f"**{i}.** {name} "
+            f"— `{money:,}` 💰\n"
+        )
 
     await ctx.send(text)
 
 
-@bot.event
-async def on_command_error(ctx, error):
+# ==============================
+# KHỞI ĐỘNG
+# ==============================
 
-    if isinstance(error, commands.CommandNotFound):
-        await ctx.send(
-            "❌ Không có lệnh này. Gõ `!help` để xem menu."
-        )
+if not TOKEN:
+    print("❌ CHƯA CÓ BOT_TOKEN!")
+    print("👉 Hãy thêm BOT_TOKEN vào Environment Variables.")
 
-    elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(
-            "❌ Thiếu thông tin. Gõ `!help` để xem cách dùng."
-        )
-
-    else:
-        print(f"❌ Lỗi: {error}")
-
-
-print("🔄 Đang khởi động bot...")
-
-bot.run(BOT_TOKEN)
+else:
+    print("🔄 Đang đăng nhập Discord...")
+    bot.run(BOT_TOKEN)
