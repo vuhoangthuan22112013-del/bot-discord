@@ -58,15 +58,13 @@ async def trogiup_cmd(ctx):
         return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi! Đợi **{cd}** giây nữa!")
 
     menu_text = (
-        "┌─────────────────────────┐\n"
-        "🎰 **CASINO BET88 UY TÍN**\n\n"
-        "⚔️ **ĐỐI KHÁNG (PVP)**\n"
-        "`!danhbai`, `!thachdau`, `!dagapvp`, `!tuxipvp @User`\n\n"
-        "🎲 **CASINO (SOLO)**\n"
-        "`!tx`, `!daga`, `!tuxi`, `!bc`, `!xd`, `!bai`, `!rl`, `!quay`, `!duangua`, `!coinflip`\n\n"
-        "🏛️ **HỆ THỐNG**\n"
-        "`!vi`, `!gui`, `!rut`, `!chuyen`, `!diemdanh`, `!bxh`, `!nhapcode`\n"
-        "└─────────────────────────┘"
+        "🟦 🎰 **CASINO BET88 UY TÍN** 🎰\n\n"
+        "🟦 ⚔️ **ĐỐI KHÁNG (PVP)**\n"
+        "🟦 `!danhbai`, `!thachdau`, `!dagapvp`, `!tuxipvp @User`\n\n"
+        "🟦 🎲 **CASINO (SOLO)**\n"
+        "🟦 `!tx`, `!daga`, `!tuxi`, `!bc`, `!xd`, `!bai`, `!rl`, `!quay`, `!duangua`, `!coinflip`\n\n"
+        "🟦 🏛️ **HỆ THỐNG**\n"
+        "🟦 `!vi`, `!gui`, `!rut`, `!chuyen`, `!diemdanh`, `!bxh`, `!nhapcode`"
     )
     await ctx.send(menu_text)
 
@@ -85,7 +83,7 @@ async def diemdanh_cmd(ctx):
     reward = 2593
     u = get_user(user_id, ctx.author.name)
     u["cash"] += reward
-    await ctx.send(f"🎁 {ctx.author.mention} Điểm danh! `+{reward:,}$`")
+    await ctx.send(f"🟦 🎁 {ctx.author.mention} Điểm danh thành công! `+{reward:,}$`")
 
 @bot.command(name="vi", aliases=["money", "bal"])
 async def vi_cmd(ctx, member: discord.Member = None):
@@ -94,13 +92,11 @@ async def vi_cmd(ctx, member: discord.Member = None):
     tag_id = target.id % 10000
     
     res = (
-        f"┌─────────────────────────┐\n"
-        f"💳 **TÀI KHOẢN: {target.name.upper()}_{tag_id:04d}**\n"
-        f"Hạng thẻ\n👤 {u['hang']}\n"
-        f"Gà chiến\n{u['ga']}\n"
-        f"💵 Tiền mặt\n`{u['cash']:,}$`\n"
-        f"🏦 Két sắt\n`{u['bank']:,}$`\n"
-        f"└─────────────────────────┘"
+        f"🟦 💳 **TÀI KHOẢN: {target.name.upper()}_{tag_id:04d}**\n"
+        f"🟦 Hạng thẻ\n👤 {u['hang']}\n"
+        f"🟦 Gà chiến\n{u['ga']}\n"
+        f"🟦 💵 Tiền mặt\n`{u['cash']:,}$`\n"
+        f"🟦 🏦 Két sắt\n`{u['bank']:,}$`"
     )
     await ctx.send(res)
 
@@ -126,20 +122,16 @@ async def quay_cmd(ctx, bet: int = None):
     s3 = random.choice(slots)
 
     msg = await ctx.send(
-        f"┌─────────────────────────┐\n"
-        f"🎰 **MÁY SLOT BET88**\n"
-        f"Máy đang quay...\n"
-        f"`[ {s1} ] [ ? ] [ ? ]`\n"
-        f"└─────────────────────────┘"
+        f"🟦 🎰 **MÁY SLOT BET88**\n"
+        f"🟦 Máy đang quay...\n"
+        f"🟦 `[ {s1} ] [ ? ] [ ? ]`"
     )
     await asyncio.sleep(0.6)
 
     await msg.edit(content=(
-        f"┌─────────────────────────┐\n"
-        f"🎰 **MÁY SLOT BET88**\n"
-        f"Máy đang quay...\n"
-        f"`[ {s1} ] [ {s2} ] [ ? ]`\n"
-        f"└─────────────────────────┘"
+        f"🟦 🎰 **MÁY SLOT BET88**\n"
+        f"🟦 Máy đang quay...\n"
+        f"🟦 `[ {s1} ] [ {s2} ] [ ? ]`"
     ))
     await asyncio.sleep(0.6)
 
@@ -148,23 +140,19 @@ async def quay_cmd(ctx, bet: int = None):
         reward = bet * 4
         u["cash"] += bet + reward
         res = (
-            f"🟩 ┌─────────────────────────┐\n"
             f"🟩 🎰 **MÁY SLOT BET88**\n"
             f"🟩 KẾT QUẢ\n"
             f"🟩 `[ {s1} ] [ {s2} ] [ {s3} ]`\n"
             f"🟩 Thông báo\n"
-            f"🟩 ✨ **NỔ HŨ!** Nhận `+{reward:,}$`\n"
-            f"🟩 └─────────────────────────┘"
+            f"🟩 ✨ **NỔ HŨ!** Nhận `+{reward:,}$`"
         )
     else:
         res = (
-            f"🟥 ┌─────────────────────────┐\n"
             f"🟥 🎰 **MÁY SLOT BET88**\n"
             f"🟥 KẾT QUẢ\n"
             f"🟥 `[ {s1} ] [ {s2} ] [ {s3} ]`\n"
             f"🟥 Thông báo\n"
-            f"🟥 💸 **TRẬT HỦ (MẤT TRẮNG)!** `-{bet:,}$`\n"
-            f"🟥 └─────────────────────────┘"
+            f"🟥 💸 **TRẬT HỦ (MẤT TRẮNG)!** `-{bet:,}$`"
         )
 
     await msg.edit(content=res)
@@ -186,13 +174,11 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         tx_session["total_xiu"] = 0
 
         msg = await ctx.send(
-            f"┌─────────────────────────┐\n"
-            f"🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
-            f"**{ctx.author.name}** đã mở bát!\n"
-            f"Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
-            f"(Cược Max: 10,000,000$/ván)\n"
-            f"⏱️ Thời gian: **30 giây**\n"
-            f"└─────────────────────────┘"
+            f"🟦 🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
+            f"🟦 **{ctx.author.name}** đã mở bát!\n"
+            f"🟦 Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
+            f"🟦 (Cược Max: 10,000,000$/ván)\n"
+            f"🟦 ⏱️ Thời gian: **30 giây**"
         )
         tx_session["msg"] = msg
 
@@ -201,13 +187,11 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
             if not tx_session["active"]: return
             try:
                 await msg.edit(content=(
-                    f"┌─────────────────────────┐\n"
-                    f"🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
-                    f"Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
-                    f"(Cược Max: 10,000,000$/ván)\n"
-                    f"⏱️ Thời gian: **{remaining} giây**\n"
-                    f"💰 Tổng Tài: `{tx_session['total_tai']:,}$` | Tổng Xỉu: `{tx_session['total_xiu']:,}$`\n"
-                    f"└─────────────────────────┘"
+                    f"🟦 🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
+                    f"🟦 Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
+                    f"🟦 (Cược Max: 10,000,000$/ván)\n"
+                    f"🟦 ⏱️ Thời gian: **{remaining} giây**\n"
+                    f"🟦 💰 Tổng Tài: `{tx_session['total_tai']:,}$` | Tổng Xỉu: `{tx_session['total_xiu']:,}$`"
                 ))
             except: pass
 
@@ -217,10 +201,8 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         tx_session["active"] = False
         try:
             await msg.edit(content=(
-                f"┌─────────────────────────┐\n"
-                f"🎲 **NHÀ CÁI BET88 ĐANG XÓC BÁT...**\n"
-                f"💰 Tài: `{tx_session['total_tai']:,}$` | `[ ? ]` `[ ? ]` `[ ? ]`\n"
-                f"└─────────────────────────┘"
+                f"🟦 🎲 **NHÀ CÁI BET88 ĐANG XÓC BÁT...**\n"
+                f"🟦 💰 Tài: `{tx_session['total_tai']:,}$` | `[ ? ]` `[ ? ]` `[ ? ]`"
             ))
         except: pass
 
@@ -248,14 +230,12 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         thua_str = "\n".join(thua_list) if thua_list else "Không có"
 
         final_res = (
-            f"┌─────────────────────────┐\n"
-            f"🟢 **MỞ BÁT BET88**\n"
-            f"Kết Quả\n"
-            f"`[ {d1} ]` - `[ {d2} ]` - `[ {d3} ]`\n\n"
-            f"➔ **{total} ĐIỂM ({kq_text})**\n"
-            f"✨ **THẮNG**\n{thang_str}\n\n"
-            f"💸 **THUA**\n{thua_str}\n"
-            f"└─────────────────────────┘"
+            f"🟦 🟢 **MỞ BÁT BET88**\n"
+            f"🟦 Kết Quả\n"
+            f"🟦 `[ {d1} ]` - `[ {d2} ]` - `[ {d3} ]`\n\n"
+            f"🟦 ➔ **{total} ĐIỂM ({kq_text})**\n"
+            f"🟦 ✨ **THẮNG**\n{thang_str}\n\n"
+            f"🟦 💸 **THUA**\n{thua_str}"
         )
         try:
             await msg.edit(content=final_res)
@@ -283,7 +263,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
         tx_session["total_xiu"] += bet
 
     tx_session["bets"][user_id] = {"name": ctx.author.name, "choice": choice, "amount": bet}
-    await ctx.send(f"✅ {ctx.author.mention} Đã đặt thành công `{bet:,}$` vào cửa **{choice.upper()}**!")
+    await ctx.send(f"🟦 ✅ {ctx.author.mention} Đã đặt thành công `{bet:,}$` vào cửa **{choice.upper()}**!")
 
 # --- LỆNH XÓC ĐĨA (!xd) ---
 @bot.command(name="xd", aliases=["xocdia"])
@@ -301,20 +281,16 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
 
     u["cash"] -= bet
     msg = await ctx.send(
-        f"┌─────────────────────────┐\n"
-        f"🪙 **XÓC ĐĨA BET88**\n"
-        f"4 Đồng xu\n"
-        f"*Xóc... xóc... xóc...*\n"
-        f"└─────────────────────────┘"
+        f"🟦 🪙 **XÓC ĐĨA BET88**\n"
+        f"🟦 4 Đồng xu\n"
+        f"🟦 *Xóc... xóc... xóc...*"
     )
     await asyncio.sleep(0.8)
     
     await msg.edit(content=(
-        f"┌─────────────────────────┐\n"
-        f"🪙 **XÓC ĐĨA BET88**\n"
-        f"4 Đồng xu\n"
-        f"*Đặt bát xuống bàn...*\n"
-        f"└─────────────────────────┘"
+        f"🟦 🪙 **XÓC ĐĨA BET88**\n"
+        f"🟦 4 Đồng xu\n"
+        f"🟦 *Đặt bát xuống bàn...*"
     ))
     await asyncio.sleep(0.8)
     
@@ -327,25 +303,21 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     if win:
         u["cash"] += bet * 2
         res = (
-            f"🟩 ┌─────────────────────────┐\n"
             f"🟩 🪙 **XÓC ĐĨA BET88**\n"
             f"🟩 4 Đồng xu\n"
             f"🟩 {board}\n"
             f"🟩 Kết quả\n"
             f"🟩 ➔ **{kq_name} ({reds} Đỏ)**\n"
-            f"🟩 ✨ **THẮNG!** Nhận `+{bet:,}$`\n"
-            f"🟩 └─────────────────────────┘"
+            f"🟩 ✨ **THẮNG!** Nhận `+{bet:,}$`"
         )
     else:
         res = (
-            f"🟥 ┌─────────────────────────┐\n"
             f"🟥 🪙 **XÓC ĐĨA BET88**\n"
             f"🟥 4 Đồng xu\n"
             f"🟥 {board}\n"
             f"🟥 Kết quả\n"
             f"🟥 ➔ **{kq_name} ({reds} Đỏ)**\n"
-            f"🟥 💸 **CÁI ĂN SẠCH!** `-{bet:,}$`\n"
-            f"🟥 └─────────────────────────┘"
+            f"🟥 💸 **CÁI ĂN SẠCH!** `-{bet:,}$`"
         )
     await msg.edit(content=res)
 
@@ -367,20 +339,16 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     u["cash"] -= bet
     
     msg = await ctx.send(
-        f"┌─────────────────────────┐\n"
-        f"🎲 **BẦU CUA BET88**\n"
-        f"Trạng thái\n"
-        f"`[ ? ] [ ? ] [ ? ]`\n"
-        f"└─────────────────────────┘"
+        f"🟦 🎲 **BẦU CUA BET88**\n"
+        f"🟦 Trạng thái\n"
+        f"🟦 `[ ? ] [ ? ] [ ? ]`"
     )
     await asyncio.sleep(0.7)
 
     await msg.edit(content=(
-        f"┌─────────────────────────┐\n"
-        f"🎲 **BẦU CUA BET88**\n"
-        f"Trạng thái\n"
-        f"Từ từ hé bát...\n"
-        f"└─────────────────────────┘"
+        f"🟦 🎲 **BẦU CUA BET88**\n"
+        f"🟦 Trạng thái\n"
+        f"🟦 Từ từ hé bát..."
     ))
     await asyncio.sleep(0.8)
 
@@ -392,27 +360,22 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         reward = bet * matches
         u["cash"] += bet + reward
         res = (
-            f"🟩 ┌─────────────────────────┐\n"
             f"🟩 🎲 **BẦU CUA BET88**\n"
             f"🟩 MỞ BÁT\n"
             f"🟩 `[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
             f"🟩 Tổng kết\n"
-            f"🟩 ✨ **TRÚNG {matches} CON!** `+{reward:,}$`\n"
-            f"🟩 └─────────────────────────┘"
+            f"🟩 ✨ **TRÚNG {matches} CON!** `+{reward:,}$`"
         )
     else:
         res = (
-            f"🟥 ┌─────────────────────────┐\n"
             f"🟥 🎲 **BẦU CUA BET88**\n"
             f"🟥 MỞ BÁT\n"
             f"🟥 `[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
             f"🟥 Tổng kết\n"
-            f"🟥 💸 **MẤT SẠCH!** `-{bet:,}$`\n"
-            f"🟥 └─────────────────────────┘"
+            f"🟥 💸 **MẤT SẠCH!** `-{bet:,}$`"
         )
     await msg.edit(content=res)
 
 # Khởi chạy bot với biến TOKEN_BOT
 token = os.getenv("TOKEN_BOT")
 bot.run(token)
-        
