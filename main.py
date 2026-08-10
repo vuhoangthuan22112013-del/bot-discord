@@ -1009,14 +1009,5 @@ else:
     )
 
 await msg.edit(embed=result_embed)
-# =========================
 # KHỞI CHẠY BOT
-# =========================
-
-token = os.getenv("TOKEN_BOT")
-
-if not token:
-    print("❌ Không tìm thấy TOKEN_BOT!")
-else:
-    print("🚀 Đang khởi động bot...")
-    bot.run(token)
+bot.run(os.getenv("TOKEN_BOT"))
