@@ -1,337 +1,505 @@
-import os,random,time,asyncio,discord
+import os, random, asyncio, time, discord
 from discord.ext import commands
 
-TOKEN=os.getenv("TOKEN_BOT")
-START=2000
-users={};codes={};spam={};loans={}
-tx={"active":False,"bets":{},"msg":None,"channel":None,"end":0}
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-bot=commands.Bot(command_prefix="!",intents=discord.Intents.all(),help_command=None)
+users = {}
+codes = {}
+TX = {"on": False, "bets": {}}
+
+START = 2000
+ADMIN = "ADMIN"
 
 def U(m):
     if m.id not in users:
-        users[m.id]={"cash":START,"bank":0,"daily":"","muted":False,"interest":time.time()}
+        users[m.id] = {
+            "cash": START, "bank": 0, "role": "Không có",
+            "loan": 0, "due": 0, "daily": 0, "muted": False
+        }
     return users[m.id]
 
-def fm(n): return f"{n:,}$"
-def E(t,d,c=0x3498DB): return discord.Embed(title=t,description=d,color=c)
-def adm(ctx): return ctx.author.guild_permissions.administrator
+def money(n):
+    return f"{n:,}$"
 
-def interest(u):
-    now=time.time()
-    days=int((now-u["interest"])/86400)
-    if days>0:
-        if u["bank"]>0:u["bank"]=int(u["bank"]*(1.02**days))
-        u["interest"]+=days*86400
+def E(title, text, color=0x3498DB):
+    return discord.Embed(title=title, description=text, color=color)
 
-def block(ctx):
-    u=U(ctx.author);interest(u)
+def admin(ctx):
+    return ctx.author.guild_permissions.administrator
+
+def debt(u):
+    return u["loan"] > 0 and time.time() > u["due"]
+
+def blocked(ctx):
+    u = U(ctx.author)
     if u["muted"]:
-        asyncio.create_task(ctx.send("🔇 Bạn đang bị khóa mõm."))
         return True
-    if ctx.author.id in loans and time.time()>loans[ctx.author.id]["due"]:
-        asyncio.create_task(ctx.send("🔴 **CON NỢ!** Dùng `!trano số_tiền`."))
+    if debt(u):
+        asyncio.create_task(ctx.send(
+            "🔴 **CON NỢ!** Bạn đang quá hạn vay và không được chơi.\n"
+            "Dùng `!trano số_tiền` để trả nợ."
+        ))
         return True
     return False
 
-@bot.check
-async def anti_spam(ctx):
-    if ctx.author.bot:return False
-    n=time.time()
-    if n-spam.get(ctx.author.id,0)<1.2:return False
-    spam[ctx.author.id]=n
-    return True
-
 @bot.event
 async def on_ready():
-    await bot.change_presence(status=discord.Status.online,activity=discord.Game("!trogiup | Casino"))
-    print("BOT ONLINE:",bot.user)
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Game("!trogiup | Casino")
+    )
+    print("BOT ONLINE:", bot.user)
 
-@bot.command()
+# ================= HELP =================
+
+@bot.command(name="trogiup")
 async def trogiup(ctx):
-    s=("## 🎰 CASINO\n"
-       "`!tx tai 100` • `!tx xiu 100`\n"
-       "`!bc cua 100` • `!xd chan 100`\n"
-       "`!xd le 100` • `!quay 100`\n\n"
-       "## 💰 TÀI KHOẢN\n"
-       "`!vi` • `!chuyen @user 100`\n"
-       "`!gui 100` • `!rut 100`\n"
-       "`!diemdanh` • `!bxh`\n"
-       "`!vay 1000` • `!trano 1000`\n\n"
-       "## 🎟️ CODE\n`!nhapcode CODE`")
-    if adm(ctx):
-        s+=("\n\n## 🛡️ ADMIN\n"
-            "`!taocode tiền lượt`\n`!thuongcode tiền lượt`\n"
-            "`!settien @user tiền`\n`!reset tien @user`\n"
-            "`!kick @user` • `!ban @user`\n"
-            "`!khoamom @user` • `!unkhoamom @user`")
-    await ctx.send(embed=E("📖 HƯỚNG DẪN CASINO",s))
+    t = (
+        "## 🎰 CASINO\n"
+        "`!tx tai 100` • `!tx xiu 100`\n"
+        "`!bc cua 100` • `!bc tom 100`\n"
+        "`!xd chan 100` • `!xd le 100`\n"
+        "`!quay 100`\n\n"
 
-@bot.command()
-async def vi(ctx,m:discord.Member=None):
-    m=m or ctx.author;u=U(m);interest(u)
-    loan=loans.get(m.id,{}).get("amount",0)
-    st="🔴 CON NỢ" if m.id in loans and time.time()>loans[m.id]["due"] else "🟢 Bình thường"
+        "## 💰 TÀI KHOẢN\n"
+        "`!vi` • `!gui 100` • `!rut 100`\n"
+        "`!chuyen @user 100`\n"
+        "`!vay 1000` • `!trano 1000`\n"
+        "`!diemdanh` • `!bxh`\n\n"
+
+        "## 🛒 CỬA HÀNG\n"
+        "`!cuahang` • `!muan vip`\n"
+        "`!muan daigia` • `!muan typhu`\n\n"
+
+        "## 🎟️ CODE\n"
+        "`!nhapcode CODE`\n\n"
+
+        "## 🛡️ ADMIN\n"
+        "`!taocode tiền lượt`\n"
+        "`!settien @user số_tiền`\n"
+        "`!kick @user` • `!ban @user`\n"
+        "`!khoamom @user` • `!reset tien @user`"
+    )
+    await ctx.send(embed=E("🎰 CASINO BET88", t, 0x3498DB))
+
+# ================= VÍ =================
+
+@bot.command(name="vi")
+async def vi(ctx, m: discord.Member=None):
+    m = m or ctx.author
+    u = U(m)
     await ctx.send(embed=E(
         f"💳 VÍ CỦA {m.display_name}",
-        f"💵 **Tiền mặt:** {fm(u['cash'])}\n"
-        f"🏦 **Ngân hàng:** {fm(u['bank'])}\n"
-        f"💸 **Khoản vay:** {fm(loan)}\n"
-        f"📌 **Trạng thái:** {st}"
+        f"💵 **Tiền mặt:** `{money(u['cash'])}`\n"
+        f"🏦 **Ngân hàng:** `{money(u['bank'])}`\n"
+        f"👑 **Role:** `{u['role']}`\n"
+        f"💸 **Khoản vay:** `{money(u['loan'])}`",
+        0x3498DB
     ))
 
 @bot.command()
-async def chuyen(ctx,m:discord.Member=None,amount:int=None):
-    if not m or not amount or amount<=0:
-        return await ctx.send("❌ `!chuyen @user số_tiền`")
+async def gui(ctx, amount:int=None):
+    if not amount or amount <= 0:
+        return await ctx.send("❌ `!gui số_tiền`")
     u=U(ctx.author)
-    if amount>u["cash"]:return await ctx.send("❌ Không đủ tiền.")
-    if m.id==ctx.author.id:return await ctx.send("❌ Không thể chuyển cho chính mình.")
-    u["cash"]-=amount;U(m)["cash"]+=amount
-    await ctx.send(f"💸 {ctx.author.mention} → {m.mention}: **{fm(amount)}**")
+    if amount > u["cash"]:
+        return await ctx.send("❌ Không đủ tiền.")
+    u["cash"]-=amount; u["bank"]+=amount
+    await ctx.send(embed=E("🏦 NGÂN HÀNG",
+        f"Đã gửi **{money(amount)}** vào ngân hàng.",0x2ECC71))
 
 @bot.command()
-async def gui(ctx,amount:int=None):
-    if not amount or amount<=0:return await ctx.send("❌ `!gui số_tiền`")
-    u=U(ctx.author);interest(u)
-    if amount>u["cash"]:return await ctx.send("❌ Không đủ tiền.")
-    u["cash"]-=amount;u["bank"]+=amount
-    await ctx.send(embed=E("🏦 GỬI NGÂN HÀNG",
-        f"💵 Gửi: **{fm(amount)}**\n"
-        f"🏦 Số dư: **{fm(u['bank'])}**\n"
-        "📈 Lãi suất: **2%/ngày**",0x2ECC71))
+async def rut(ctx, amount:int=None):
+    if not amount or amount<=0:
+        return await ctx.send("❌ `!rut số_tiền`")
+    u=U(ctx.author)
+    if amount>u["bank"]:
+        return await ctx.send("❌ Ngân hàng không đủ tiền.")
+    u["bank"]-=amount; u["cash"]+=amount
+    await ctx.send(embed=E("💵 RÚT TIỀN",
+        f"Đã rút **{money(amount)}**.",0x2ECC71))
 
 @bot.command()
-async def rut(ctx,amount:int=None):
-    if not amount or amount<=0:return await ctx.send("❌ `!rut số_tiền`")
-    u=U(ctx.author);interest(u)
-    if amount>u["bank"]:return await ctx.send("❌ Ngân hàng không đủ tiền.")
-    u["bank"]-=amount;u["cash"]+=amount
-    await ctx.send(f"🏦➡️💵 Đã rút **{fm(amount)}**.")
+async def chuyen(ctx, m:discord.Member=None, amount:int=None):
+    if not m or not amount:
+        return await ctx.send("❌ `!chuyen @user số_tiền`")
+    if amount<1 or amount>10_000_000:
+        return await ctx.send("❌ Chỉ được 1$ - 10.000.000$.")
+    if m.id==ctx.author.id:
+        return await ctx.send("❌ Không thể chuyển cho chính mình.")
+    a,b=U(ctx.author),U(m)
+    if a["cash"]<amount:
+        return await ctx.send("❌ Không đủ tiền.")
+    a["cash"]-=amount; b["cash"]+=amount
+    await ctx.send(embed=E("💸 CHUYỂN TIỀN",
+        f"{ctx.author.mention} → {m.mention}\n"
+        f"💵 **{money(amount)}**",0x2ECC71))
+
+# ================= VAY =================
+
+@bot.command()
+async def vay(ctx, amount:int=None):
+    if not amount or not 1000<=amount<=50000:
+        return await ctx.send("❌ Vay từ **1.000$ đến 50.000$**.")
+    u=U(ctx.author)
+    if u["loan"]>0:
+        return await ctx.send("❌ Bạn đang có khoản vay.")
+    u["loan"]=amount
+    u["cash"]+=amount
+    u["due"]=time.time()+3600
+    await ctx.send(embed=E(
+        "💸 VAY TIỀN THÀNH CÔNG",
+        f"💵 Bạn đã vay: **{money(amount)}**\n"
+        "⏰ Thời hạn: **1 giờ**\n"
+        "⚠️ Sau 1 giờ không trả sẽ thành **CON NỢ** và không được chơi.\n\n"
+        f"Trả bằng: `!trano {amount}`",0xF39C12))
+
+@bot.command()
+async def trano(ctx, amount:int=None):
+    u=U(ctx.author)
+    if u["loan"]<=0:
+        return await ctx.send("❌ Bạn không có khoản vay.")
+    if not amount or amount!=u["loan"]:
+        return await ctx.send(f"❌ Cần trả đúng **{money(u['loan'])}**.")
+    if u["cash"]<amount:
+        return await ctx.send("❌ Bạn không đủ tiền trả nợ.")
+    u["cash"]-=amount
+    u["loan"]=0; u["due"]=0
+    await ctx.send(embed=E(
+        "✅ ĐÃ TRẢ NỢ",
+        f"{ctx.author.mention} đã trả **{money(amount)}**.\n"
+        "🟢 Bạn đã được phép chơi lại!",0x2ECC71))
+
+# ================= DAILY =================
 
 @bot.command()
 async def diemdanh(ctx):
-    u=U(ctx.author);d=time.strftime("%Y-%m-%d")
-    if u["daily"]==d:return await ctx.send("⏰ Hôm nay đã điểm danh.")
-    n=random.randint(1000,3000);u["cash"]+=n;u["daily"]=d
-    await ctx.send(embed=E("🎁 ĐIỂM DANH",
-        f"🎉 Nhận **{fm(n)}**\n💰 Số dư: **{fm(u['cash'])}**",0x2ECC71))
+    u=U(ctx.author)
+    now=time.localtime()
+    today=now.tm_yday
+    if u["daily"]==today:
+        return await ctx.send("❌ Hôm nay bạn đã điểm danh rồi.")
+    reward=random.randint(1000,3000)
+    u["cash"]+=reward; u["daily"]=today
+    await ctx.send(embed=E(
+        "🎁 ĐIỂM DANH",
+        f"{ctx.author.mention}\n"
+        f"💰 Nhận **{money(reward)}**\n"
+        "⏰ Ngày mai quay lại nhận tiếp!",0x2ECC71))
+
+# ================= BXH =================
 
 @bot.command()
 async def bxh(ctx):
     arr=sorted(users.items(),key=lambda x:x[1]["cash"]+x[1]["bank"],reverse=True)[:5]
-    s=""
+    text=""
     for i,(uid,u) in enumerate(arr,1):
         m=ctx.guild.get_member(uid)
-        s+=f"**{i}.** {m.display_name if m else uid} — `{fm(u['cash']+u['bank'])}`\n"
-    await ctx.send(embed=E("🏆 TOP 5 GIÀU NHẤT",s,0xF1C40F))
+        name=m.display_name if m else f"User {uid}"
+        total=u["cash"]+u["bank"]
+        text+=f"**{i}.** {name} — `{money(total)}`\n"
+    await ctx.send(embed=E("🏆 TOP 5 GIÀU NHẤT",text or "Chưa có dữ liệu.",0xF1C40F))
+
+# ================= QUAY =================
 
 @bot.command()
-async def vay(ctx,amount:int=None):
-    if not amount or not 1000<=amount<=50000:return await ctx.send("❌ Vay từ **1.000$ đến 50.000$**.")
-    if ctx.author.id in loans:return await ctx.send("❌ Bạn đang có khoản vay.")
-    U(ctx.author)["cash"]+=amount
-    loans[ctx.author.id]={"amount":amount,"due":time.time()+3600}
-    await ctx.send(f"💳 Vay thành công **{fm(amount)}**. Hạn **1 giờ**.")
-
-@bot.command()
-async def trano(ctx,amount:int=None):
-    if ctx.author.id not in loans:return await ctx.send("❌ Bạn không có nợ.")
-    d=loans[ctx.author.id]["amount"];u=U(ctx.author)
-    if amount!=d:return await ctx.send(f"❌ Phải trả đúng **{fm(d)}**.")
-    if u["cash"]<d:return await ctx.send("❌ Không đủ tiền.")
-    u["cash"]-=d;del loans[ctx.author.id]
-    await ctx.send("✅ Đã trả nợ. Bạn được chơi lại.")
-
-@bot.command()
-async def quay(ctx,amount:int=None):
-    if block(ctx):return
-    if not amount or amount<1:return await ctx.send("❌ `!quay số_tiền`")
+async def quay(ctx, amount:int=None):
+    if blocked(ctx): return
+    if not amount or amount<1:
+        return await ctx.send("❌ `!quay số_tiền`")
     u=U(ctx.author)
-    if amount>u["cash"]:return await ctx.send("❌ Không đủ tiền.")
+    if amount>u["cash"]:
+        return await ctx.send("❌ Bạn không đủ tiền.")
     u["cash"]-=amount
     s=["🍒","🍋","⭐","🔔","💎"]
     a,b,c=[random.choice(s) for _ in range(3)]
-    msg=await ctx.send(embed=E("🎰 MÁY SLOT NỔ HŨ","【 ○ 】 【 ○ 】 【 ○ 】",0xF1C40F))
-    await asyncio.sleep(.7)
-    win=amount*5 if a==b==c else amount*2 if len({a,b,c})<3 else 0
-    if win:u["cash"]+=win
-    await msg.edit(embed=E("🎰 MÁY SLOT NỔ HŨ",
-        f"【 {a} 】 【 {b} 】 【 {c} 】\n\n"+
-        (f"🟢 **THẮNG!** +{fm(win)}" if win else f"🔴 **TRẬT HỦ!** -{fm(amount)}"),
-        0x2ECC71 if win else 0xE74C3C))
+
+    msg=await ctx.send(embed=E(
+        "🎰  7️⃣7️⃣7️⃣  SLOT",
+        "🟨  `[ ❓ ]  [ ❓ ]  [ ❓ ]`",0xF39C12))
+
+    await asyncio.sleep(.5)
+    await msg.edit(embed=E(
+        "🎰  7️⃣7️⃣7️⃣  SLOT",
+        f"🟨  `[ {a} ]  [ ❓ ]  [ ❓ ]`",0xF39C12))
+
+    await asyncio.sleep(.5)
+    await msg.edit(embed=E(
+        "🎰  7️⃣7️⃣7️⃣  SLOT",
+        f"🟨  `[ {a} ]  [ {b} ]  [ ❓ ]`",0xF39C12))
+
+    await asyncio.sleep(.5)
+    await msg.edit(embed=E(
+        "🎰  7️⃣7️⃣7️⃣  SLOT",
+        f"🟨  `[ {a} ]  [ {b} ]  [ {c} ]`",0xF39C12))
+
+    if a==b==c:
+        win=amount*5; u["cash"]+=win
+        result=f"🟢 **JACKPOT x5!**\n💰 Nhận **{money(win)}**"
+        col=0x2ECC71
+    elif a==b or a==c or b==c:
+        win=int(amount*1.5); u["cash"]+=win
+        result=f"🟢 **2 HÌNH GIỐNG NHAU x1.5!**\n💰 Nhận **{money(win)}**"
+        col=0x2ECC71
+    else:
+        result=f"🔴 **THUA!**\n💸 Mất **{money(amount)}**"
+        col=0xE74C3C
+
+    await msg.edit(embed=E(
+        "🎰  7️⃣7️⃣7️⃣  SLOT",
+        f"`[ {a} ]  [ {b} ]  [ {c} ]`\n\n{result}",col))
+
+# ================= BẦU CUA =================
 
 @bot.command()
-async def bc(ctx,choice=None,amount:int=None):
-    if block(ctx):return
+async def bc(ctx, choice:str=None, amount:int=None):
+    if blocked(ctx): return
     icons={"ca":"🐟","tom":"🦐","cua":"🦀","bau":"🥒","ga":"🐓","nai":"🦌"}
-    if choice not in icons or not amount:return await ctx.send("❌ `!bc ca/tom/cua/bau/ga/nai số_tiền`")
+    if choice not in icons or not amount or amount<1:
+        return await ctx.send("❌ `!bc ca/tom/cua/bau/ga/nai số_tiền`")
     u=U(ctx.author)
-    if amount>u["cash"]:return await ctx.send("❌ Không đủ tiền.")
-    u["cash"]-=amount;r=[random.choice(list(icons)) for _ in range(3)]
-    n=r.count(choice);win=amount*(n+1) if n else 0
-    if win:u["cash"]+=win
-    board=" ".join(f"【 {icons[x]} 】" for x in r)
-    await ctx.send(embed=E("🎲 BẦU CUA",f"{board}\n\n"+
-        (f"🟢 **TRÚNG {n} CON!** +{fm(win)}" if win else f"🔴 **TRẬT!** -{fm(amount)}"),
-        0x2ECC71 if win else 0xE74C3C))
+    if amount>u["cash"]:
+        return await ctx.send("❌ Bạn không đủ tiền.")
+    u["cash"]-=amount
+
+    r=[random.choice(list(icons)) for _ in range(3)]
+    board="  ".join(f"【 {icons[x]} 】" for x in r)
+
+    msg=await ctx.send(embed=E(
+        "🎲  BẦU CUA",
+        "🟧 **ĐANG LẮC...**\n\n"
+        "【 ❓ 】  【 ❓ 】  【 ❓ 】",0xF39C12))
+
+    await asyncio.sleep(1)
+
+    count=r.count(choice)
+    if count:
+        win=amount*(count+1); u["cash"]+=win
+        text=(f"{board}\n\n"
+              f"🟢 **TRÚNG {count} CON! x{count+1}**\n"
+              f"💰 Nhận **{money(win)}**")
+        col=0x2ECC71
+    else:
+        text=f"{board}\n\n🔴 **THUA!**\n💸 Mất **{money(amount)}**"
+        col=0xE74C3C
+
+    await msg.edit(embed=E("🎲  BẦU CUA",text,col))
+
+# ================= XÓC ĐĨA =================
 
 @bot.command()
-async def xd(ctx,choice=None,amount:int=None):
-    if block(ctx):return
-    if choice not in ("chan","le") or not amount:return await ctx.send("❌ `!xd chan 100` hoặc `!xd le 100`")
+async def xd(ctx, choice:str=None, amount:int=None):
+    if blocked(ctx): return
+    if choice not in ["chan","le"] or not amount or amount<1:
+        return await ctx.send("❌ `!xd chan 100` hoặc `!xd le 100`")
     u=U(ctx.author)
-    if amount<100 or amount>u["cash"]:return await ctx.send("❌ Cược không hợp lệ.")
+    if amount>u["cash"]:
+        return await ctx.send("❌ Bạn không đủ tiền.")
     u["cash"]-=amount
-    msg=await ctx.send(embed=E("🪙 XÓC ĐĨA","🔴 ⚪ 🔴 🔴\n\n🥣 **Xóc... Xóc... Xóc...**",0xF1C40F))
+
+    msg=await ctx.send(embed=E(
+        "🪙  XÓC ĐĨA",
+        "🥣 **Xóc... Xóc... Xóc...**",0xF39C12))
     await asyncio.sleep(1.5)
-    b=[random.randint(0,1) for _ in range(4)];n=sum(b)
-    r="chan" if n%2==0 else "le";win=amount*2 if choice==r else 0
-    if win:u["cash"]+=win
-    board=" ".join("🔴" if x else "⚪" for x in b)
-    await msg.edit(embed=E("🪙 XÓC ĐĨA",
-        f"{board}\n\n🎯 **Kết quả: {r.upper()}**\n🔴 **Số đỏ: {n}**\n\n"+
-        (f"🟢 **THẮNG x2!**\n💰 Nhận {fm(win)}" if win else f"🔴 **THUA!**\n💸 Mất {fm(amount)}"),
-        0x2ECC71 if win else 0xE74C3C))
 
-# =========================
-# TÀI XỈU 30 GIÂY
-# =========================
+    balls=[random.randint(0,1) for _ in range(4)]
+    n=sum(balls)
+    result="chan" if n%2==0 else "le"
+    board="  ".join("🔴" if x else "⚪" for x in balls)
+
+    if choice==result:
+        u["cash"]+=amount*2
+        text=f"{board}\n\n🎯 Kết quả: **{result.upper()}**\n🔴 Số đỏ: **{n}**\n\n🟢 **THẮNG x2!**\n💰 Nhận **{money(amount*2)}**"
+        col=0x2ECC71
+    else:
+        text=f"{board}\n\n🎯 Kết quả: **{result.upper()}**\n🔴 Số đỏ: **{n}**\n\n🔴 **THUA!**\n💸 Mất **{money(amount)}**"
+        col=0xE74C3C
+
+    await msg.edit(embed=E("🪙  XÓC ĐĨA",text,col))
+
+# ================= TÀI XỈU =================
 
 @bot.command()
-async def tx(ctx,choice=None,amount:int=None):
-    if block(ctx):return
-    if choice not in ("tai","xiu") or not amount:
+async def tx(ctx, choice:str=None, amount:int=None):
+    if blocked(ctx): return
+    if choice not in ["tai","xiu"]:
         return await ctx.send("❌ `!tx tai 100` hoặc `!tx xiu 100`")
+    if not amount or not 100<=amount<=10_000_000:
+        return await ctx.send("❌ Cược từ 100$ đến 10.000.000$.")
     u=U(ctx.author)
-    if amount<100 or amount>10000000:return await ctx.send("❌ Cược từ 100$ đến 10,000,000$.")
-    if amount>u["cash"]:return await ctx.send("❌ Không đủ tiền.")
+    if u["cash"]<amount:
+        return await ctx.send("❌ Bạn không đủ tiền.")
 
-    if not tx["active"]:
-        tx["active"]=True;tx["bets"]={};tx["channel"]=ctx.channel;tx["end"]=time.time()+30
-        tx["msg"]=await ctx.send(embed=E(
-            "🎲 SÒNG TÀI XỈU 30S 🎲",
-            "📌 **Gõ `!tx <tai/xiu> <tiền>` để tham gia**\n"
-            "💰 Tối đa **10,000,000$/ván**\n\n"
-            "⏱️ **Thời gian: 30 giây**\n"
-            "🔴 **Tổng Tài:** 0$\n"
-            "🔵 **Tổng Xỉu:** 0$",0xF1C40F))
-        asyncio.create_task(tx_timer())
-        asyncio.create_task(tx_finish())
+    if not TX["on"]:
+        TX["on"]=True; TX["bets"]={}
+        u["cash"]-=amount
+        TX["bets"][ctx.author.id]=(choice,amount)
 
-    if ctx.author.id in tx["bets"]:
-        return await ctx.send("❌ **Bạn đã đặt cược rồi!** Mỗi phiên chỉ được cược 1 lần.")
+        msg=await ctx.send(embed=E(
+            "🎲 TÀI XỈU",
+            "🟠 **ĐANG NHẬN CƯỢC**\n\n"
+            "⏱️ Còn **30 giây**\n"
+            "👥 Người đã cược: **1**",0xF39C12))
 
+        for left in [20,10]:
+            await asyncio.sleep(10)
+            if not TX["on"]: return
+            await msg.edit(embed=E(
+                "🎲 TÀI XỈU",
+                f"🟠 **ĐANG NHẬN CƯỢC**\n\n"
+                f"⏱️ Còn **{left} giây**\n"
+                f"👥 Người đã cược: **{len(TX['bets'])}**",0xF39C12))
+
+        await asyncio.sleep(10)
+        if not TX["on"]: return
+        TX["on"]=False
+
+        d=[random.randint(1,6) for _ in range(3)]
+        total=sum(d)
+        result="tai" if total>=11 else "xiu"
+        text=f"🎲 **{d[0]}  {d[1]}  {d[2]}**\n\n"
+        text+=f"🎯 **{total} điểm → {result.upper()}**\n\n"
+
+        for uid,(ch,bet) in TX["bets"].items():
+            pl=U(ctx.guild.get_member(uid))
+            if ch==result:
+                win=bet*2; pl["cash"]+=win
+                text+=f"🟢 **{pl.get('name','Người chơi')}** +{money(win)}\n"
+            else:
+                text+=f"🔴 Cược {money(bet)} — thua\n"
+
+        TX["bets"]={}
+        await msg.edit(embed=E("🎲 KẾT QUẢ TÀI XỈU",text,0x2ECC71))
+        return
+
+    if ctx.author.id in TX["bets"]:
+        return await ctx.send("❌ Bạn đã cược rồi.")
     u["cash"]-=amount
-    tx["bets"][ctx.author.id]=(choice,amount)
-    await ctx.send(f"✅ {ctx.author.mention} đặt **{choice.upper()} {fm(amount)}**.")
+    TX["bets"][ctx.author.id]=(choice,amount)
+    await ctx.send(embed=E(
+        "🎯 ĐẶT CƯỢC",
+        f"{ctx.author.mention}\n"
+        f"Cược **{money(amount)}** vào **{choice.upper()}**.",0xF39C12))
 
-async def tx_timer():
-    while tx["active"]:
-        left=max(0,int(tx["end"]-time.time()))
-        if left<=0:break
-        tai=sum(a for c,a in tx["bets"].values() if c=="tai")
-        xiu=sum(a for c,a in tx["bets"].values() if c=="xiu")
-        try:
-            await tx["msg"].edit(embed=E(
-                "🎲 SÒNG TÀI XỈU 30S 🎲",
-                "📌 **Gõ `!tx <tai/xiu> <tiền>` để tham gia**\n"
-                "💰 Tối đa **10,000,000$/ván**\n\n"
-                f"⏱️ **Thời gian: {left} giây**\n"
-                f"🔴 **Tổng Tài:** {fm(tai)}\n"
-                f"🔵 **Tổng Xỉu:** {fm(xiu)}",0xF1C40F))
-        except:pass
-        await asyncio.sleep(1)
-
-async def tx_finish():
-    await asyncio.sleep(max(0,tx["end"]-time.time()))
-    if not tx["active"]:return
-    d=[random.randint(1,6) for _ in range(3)]
-    total=sum(d);result="tai" if total>=11 else "xiu"
-    name="TÀI 🔴" if result=="tai" else "XỈU 🔵"
-    s=(f"🎲 **XÚC XẮC:** 【{d[0]}】 【{d[1]}】 【{d[2]}】\n"
-       f"🎯 **{total} → {name}**\n\n")
-    for uid,(c,a) in tx["bets"].items():
-        if c==result:
-            w=a*2;users[uid]["cash"]+=w;s+=f"🟢 <@{uid}> **+{fm(w)}**\n"
-        else:s+=f"🔴 <@{uid}> **-{fm(a)}**\n"
-    try:await tx["msg"].edit(embed=E("🎲 KẾT QUẢ TÀI XỈU 🎲",s,0x2ECC71))
-    except:await tx["channel"].send(embed=E("🎲 KẾT QUẢ TÀI XỈU 🎲",s,0x2ECC71))
-    tx["active"]=False;tx["bets"]={};tx["msg"]=None
+# ================= CODE =================
 
 @bot.command()
-async def taocode(ctx,amount:int=None,uses:int=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not amount or not uses:return await ctx.send("❌ `!taocode tiền lượt`")
-    code="CASINO"+str(random.randint(100000,999999));codes[code]=[amount,uses]
+async def taocode(ctx, amount:int=None, uses:int=None):
+    if not admin(ctx): return await ctx.send("❌ Chỉ Admin.")
+    if not amount or not uses or amount<1 or uses<1:
+        return await ctx.send("❌ `!taocode số_tiền số_lượt`")
+    code="CASINO"+str(random.randint(100000,999999))
+    codes[code]=[amount,uses]
     try:
-        await ctx.author.send(f"🎟️ CODE: `{code}`\n💰 {fm(amount)}\n🎫 {uses} lượt")
-        await ctx.send("✅ Code đã gửi DM.")
-    except:await ctx.send(f"⚠️ Code: `{code}`")
+        await ctx.author.send(
+            f"🎟️ **CODE CỦA BẠN**\n"
+            f"`{code}`\n💰 {money(amount)}\n"
+            f"🔢 {uses} lượt")
+        await ctx.send("✅ Đã gửi code riêng cho bạn.")
+    except discord.Forbidden:
+        await ctx.send(f"❌ Không gửi DM được. Code: `{code}`")
 
 @bot.command()
-async def thuongcode(ctx,amount:int=None,uses:int=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not amount or not uses:return await ctx.send("❌ `!thuongcode tiền lượt`")
-    code="THUONG"+str(random.randint(100000,999999));codes[code]=[amount,uses]
-    await ctx.send(embed=E("🎁 THƯỞNG CODE",f"🔑 `{code}`\n💰 {fm(amount)}\n🎫 {uses} lượt"))
+async def nhapcode(ctx, code:str=None):
+    if not code or code not in codes:
+        return await ctx.send("❌ Code không tồn tại.")
+    amount,uses=codes[code]
+    if uses<=0:
+        return await ctx.send("❌ Code đã hết lượt.")
+    U(ctx.author)["cash"]+=amount
+    codes[code][1]-=1
+    await ctx.send(embed=E(
+        "🎟️ NHẬP CODE THÀNH CÔNG",
+        f"💰 Bạn nhận **{money(amount)}**\n"
+        f"🔢 Còn **{uses-1} lượt**",0x2ECC71))
+
+# ================= ADMIN =================
 
 @bot.command()
-async def nhapcode(ctx,code=None):
-    if not code or code.upper() not in codes:return await ctx.send("❌ Code không tồn tại.")
-    code=code.upper();a,n=codes[code]
-    if n<=0:return await ctx.send("❌ Code hết lượt.")
-    U(ctx.author)["cash"]+=a;codes[code][1]-=1
-    await ctx.send(f"🎟️ Nhận **{fm(a)}**. Còn **{n-1} lượt**.")
-
-@bot.command()
-async def settien(ctx,m:discord.Member=None,amount:int=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not m or amount is None:return await ctx.send("❌ `!settien @user tiền`")
-    U(m)["cash"]=max(0,amount);await ctx.send(f"🛡️ {m.mention} → **{fm(amount)}**")
-
-@bot.command()
-async def reset(ctx,what=None,m:discord.Member=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if what!="tien" or not m:return await ctx.send("❌ `!reset tien @user`")
-    U(m)["cash"]=START;U(m)["bank"]=0;await ctx.send(f"♻️ Reset {m.mention}.")
+async def settien(ctx, m:discord.Member=None, amount:int=None):
+    if not admin(ctx): return await ctx.send("❌ Chỉ Admin.")
+    if not m or amount is None:
+        return await ctx.send("❌ `!settien @user số_tiền`")
+    U(m)["cash"]=amount
+    await ctx.send(embed=E(
+        "🛡️ SET TIỀN",
+        f"{m.mention} → **{money(amount)}**",0x3498DB))
 
 @bot.command()
 async def kick(ctx,m:discord.Member=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not m:return await ctx.send("❌ `!kick @user`")
-    await m.kick();await ctx.send(f"👢 Đã kick {m.mention}")
+    if not admin(ctx): return await ctx.send("❌ Chỉ Admin.")
+    if not m: return await ctx.send("❌ `!kick @user`")
+    await m.kick()
+    await ctx.send(f"👢 Đã kick {m.mention}.")
 
 @bot.command()
 async def ban(ctx,m:discord.Member=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not m:return await ctx.send("❌ `!ban @user`")
-    await m.ban();await ctx.send(f"🔨 Đã ban {m.mention}")
+    if not admin(ctx): return await ctx.send("❌ Chỉ Admin.")
+    if not m: return await ctx.send("❌ `!ban @user`")
+    await m.ban()
+    await ctx.send(f"🔨 Đã ban {m.mention}.")
 
 @bot.command()
 async def khoamom(ctx,m:discord.Member=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not m:return await ctx.send("❌ `!khoamom @user`")
-    U(m)["muted"]=True;await ctx.send(f"🔇 {m.mention} đã bị khóa mõm.")
+    if not admin(ctx): return await ctx.send("❌ Chỉ Admin.")
+    if not m: return await ctx.send("❌ `!khoamom @user`")
+    u=U(m); u["muted"]=not u["muted"]
+    await ctx.send(
+        f"🔇 {m.mention} đã "
+        f"{'bị khóa mõm.' if u['muted'] else 'được mở khóa.'}")
 
 @bot.command()
-async def unkhoamom(ctx,m:discord.Member=None):
-    if not adm(ctx):return await ctx.send("⛔ Chỉ Admin.")
-    if not m:return await ctx.send("❌ `!unkhoamom @user`")
-    U(m)["muted"]=False;await ctx.send(f"🔊 {m.mention} đã được mở khóa.")
+async def reset(ctx, what:str=None, m:discord.Member=None):
+    if not admin(ctx): return await ctx.send("❌ Chỉ Admin.")
+    if what!="tien" or not m:
+        return await ctx.send("❌ `!reset tien @user`")
+    U(m)["cash"]=START
+    U(m)["bank"]=0
+    await ctx.send(
+        f"♻️ Đã reset tiền của {m.mention} về **{money(START)}**.")
 
-@bot.event
-async def on_command_error(ctx,error):
-    if isinstance(error,commands.CommandNotFound):return
-    if isinstance(error,commands.CommandOnCooldown):return
-    if isinstance(error,commands.MissingRequiredArgument):
-        return await ctx.send("❌ Thiếu thông tin. Gõ `!trogiup`.")
-    if isinstance(error,commands.BadArgument):
-        return await ctx.send("❌ Sai cú pháp.")
-    print("ERROR:",error)
+# ================= SHOP =================
+
+@bot.command()
+async def cuahang(ctx):
+    await ctx.send(embed=E(
+        "🛒 CỬA HÀNG ROLE",
+        "💛 **VIP** — 10.000.000$\n`!muan vip`\n\n"
+        "💙 **ĐẠI GIA** — 5.000.000$\n`!muan daigia`\n\n"
+        "💜 **TỶ PHÚ** — 1.000.000.000$\n`!muan typhu`",
+        0xF1C40F))
+
+@bot.command()
+async def muan(ctx,name:str=None):
+    prices={"vip":10_000_000,"daigia":5_000_000,"typhu":1_000_000_000}
+    names={"vip":"VIP","daigia":"Đại Gia","typhu":"Tỷ Phú"}
+    if name not in prices:
+        return await ctx.send("❌ `!muan vip/daigia/typhu`")
+    u=U(ctx.author)
+    if u["cash"]<prices[name]:
+        return await ctx.send("❌ Không đủ tiền.")
+    role=discord.utils.get(ctx.guild.roles,name=names[name])
+    if not role:
+        return await ctx.send(f"❌ Chưa có role **{names[name]}**.")
+    if role>=ctx.guild.me.top_role:
+        return await ctx.send("❌ Role cao hơn role bot.")
+    u["cash"]-=prices[name]
+    u["role"]=names[name]
+    try:
+        await ctx.author.add_roles(role)
+    except discord.Forbidden:
+        return await ctx.send("❌ Bot không có quyền gán role.")
+    await ctx.send(embed=E(
+        "👑 MUA ROLE THÀNH CÔNG",
+        f"{ctx.author.mention}\n"
+        f"Đã mua **{names[name]}** với giá **{money(prices[name])}**.",0x2ECC71))
+
+# ================= START =================
+
+TOKEN=os.getenv("TOKEN_BOT")
 
 if not TOKEN:
     print("❌ Không tìm thấy TOKEN_BOT!")
 else:
-    print("🚀 BOT ĐANG CHẠY...")
     bot.run(TOKEN)
