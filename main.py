@@ -1,18 +1,25 @@
 import os
-import asyncio
 import random
+import asyncio
 import discord
 from discord.ext import commands
 
-# ==============================
-# TOKEN
-# ==============================
+# ==========================================
+# LẤY TOKEN TỪ SECRET / ENVIRONMENT
+# Tên Secret: TOKEN_BOT
+# ==========================================
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("TOKEN_BOT")
 
-# ==============================
-# DISCORD BOT
-# ==============================
+if not TOKEN:
+    print("❌ Không tìm thấy TOKEN_BOT!")
+    print("👉 Hãy kiểm tra Secret/Environment Variable.")
+    raise SystemExit
+
+
+# ==========================================
+# CẤU HÌNH DISCORD
+# ==========================================
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -26,26 +33,33 @@ bot = commands.Bot(
 users = {}
 
 
+# ==========================================
+# TIỀN ẢO
+# ==========================================
+
 def get_money(user_id):
+
     if user_id not in users:
         users[user_id] = 5000
+
     return users[user_id]
 
 
-# ==============================
-# BOT TỰ ONLINE
-# ==============================
+# ==========================================
+# BOT ONLINE
+# ==========================================
 
 @bot.event
 async def on_ready():
-    print("================================")
-    print("🤖 BOT ĐÃ ONLINE")
-    print(f"👤 {bot.user}")
-    print(f"🆔 {bot.user.id}")
-    print("🎮 Prefix: !")
-    print("================================")
 
-    # Đặt trạng thái Online/đang chơi
+    print("======================================")
+    print("          🎰 BOT ĐÃ ONLINE")
+    print("======================================")
+    print(f"🤖 Bot: {bot.user}")
+    print(f"🆔 ID: {bot.user.id}")
+    print("🎮 Prefix: !")
+    print("======================================")
+
     await bot.change_presence(
         status=discord.Status.online,
         activity=discord.Game(
@@ -54,15 +68,15 @@ async def on_ready():
     )
 
 
-# ==============================
+# ==========================================
 # MENU
-# ==============================
+# ==========================================
 
 @bot.command(name="help")
 async def help_cmd(ctx):
 
     embed = discord.Embed(
-        title="🎰 CASINO GIẢI TRÍ 🎰",
+        title="🎰 CASINO GIẢI TRÍ",
         description="💰 Hệ thống tiền ảo",
         color=discord.Color.blurple()
     )
@@ -92,9 +106,9 @@ async def help_cmd(ctx):
     await ctx.send(embed=embed)
 
 
-# ==============================
+# ==========================================
 # VÍ
-# ==============================
+# ==========================================
 
 @bot.command(name="vi")
 async def vi(ctx):
@@ -107,9 +121,9 @@ async def vi(ctx):
     )
 
 
-# ==============================
+# ==========================================
 # DAILY
-# ==============================
+# ==========================================
 
 @bot.command(name="daily")
 async def daily(ctx):
@@ -122,40 +136,42 @@ async def daily(ctx):
     )
 
 
-# ==============================
+# ==========================================
 # TÀI XỈU
-# ==============================
+# ==========================================
 
 @bot.command(name="tx")
 async def tx(ctx, choice=None, bet=None):
 
     if choice not in ["tai", "xiu"]:
-        return await ctx.send(
-            "❌ Dùng: `!tx tai 100` hoặc `!tx xiu 100`"
+        await ctx.send(
+            "❌ Cách dùng:\n"
+            "`!tx tai 100`\n"
+            "`!tx xiu 100`"
         )
+        return
 
     try:
         bet = int(bet)
     except:
-        return await ctx.send(
-            "❌ Tiền cược phải là số!"
-        )
+        await ctx.send("❌ Tiền cược phải là số!")
+        return
 
     if bet <= 0:
-        return await ctx.send(
-            "❌ Tiền cược phải lớn hơn 0!"
-        )
+        await ctx.send("❌ Tiền cược phải lớn hơn 0!")
+        return
 
     money = get_money(ctx.author.id)
 
     if money < bet:
-        return await ctx.send(
-            "❌ Bạn không đủ tiền ảo!"
+        await ctx.send(
+            f"❌ Bạn chỉ có `{money:,}` tiền ảo!"
         )
+        return
 
     msg = await ctx.send(
         "🎲 **TÀI XỈU**\n\n"
-        "[ ❔ ] [ ❔ ] [ ❔ ]\n"
+        "[ ❔ ] [ ❔ ] [ ❔ ]\n\n"
         "⏳ Đang lắc..."
     )
 
@@ -169,11 +185,11 @@ async def tx(ctx, choice=None, bet=None):
 
     result = "tai" if total >= 11 else "xiu"
 
-    if result == choice:
+    if choice == result:
 
         users[ctx.author.id] += bet
 
-        result_text = (
+        status = (
             f"🎉 **THẮNG!**\n"
             f"💰 +`{bet:,}` tiền ảo"
         )
@@ -182,7 +198,7 @@ async def tx(ctx, choice=None, bet=None):
 
         users[ctx.author.id] -= bet
 
-        result_text = (
+        status = (
             f"💸 **THUA!**\n"
             f"💰 -`{bet:,}` tiền ảo"
         )
@@ -195,14 +211,14 @@ async def tx(ctx, choice=None, bet=None):
             f"[ **{d3}** ]\n\n"
             f"➕ Tổng: **{total}**\n"
             f"🎯 Kết quả: **{result.upper()}**\n\n"
-            f"{result_text}"
+            f"{status}"
         )
     )
 
 
-# ==============================
+# ==========================================
 # SLOT
-# ==============================
+# ==========================================
 
 @bot.command(name="quay")
 async def quay(ctx, bet=None):
@@ -210,23 +226,18 @@ async def quay(ctx, bet=None):
     try:
         bet = int(bet)
     except:
-        return await ctx.send(
-            "❌ Dùng: `!quay 100`"
-        )
+        await ctx.send("❌ Dùng: `!quay 100`")
+        return
 
     if bet <= 0:
-        return await ctx.send(
-            "❌ Tiền cược không hợp lệ!"
-        )
+        await ctx.send("❌ Tiền cược không hợp lệ!")
+        return
 
     money = get_money(ctx.author.id)
 
     if money < bet:
-        return await ctx.send(
-            "❌ Bạn không đủ tiền ảo!"
-        )
-
-    symbols = ["🍒", "🍋", "🔔", "💎"]
+        await ctx.send("❌ Bạn không đủ tiền ảo!")
+        return
 
     msg = await ctx.send(
         "🎰 **SLOT**\n"
@@ -234,6 +245,8 @@ async def quay(ctx, bet=None):
     )
 
     await asyncio.sleep(1)
+
+    symbols = ["🍒", "🍋", "🔔", "💎"]
 
     a = random.choice(symbols)
     b = random.choice(symbols)
@@ -272,12 +285,16 @@ async def quay(ctx, bet=None):
         )
 
 
-# ==============================
+# ==========================================
 # BẢNG XẾP HẠNG
-# ==============================
+# ==========================================
 
 @bot.command(name="bxh")
 async def bxh(ctx):
+
+    if not users:
+        await ctx.send("🏆 Chưa có người chơi!")
+        return
 
     ranking = sorted(
         users.items(),
@@ -294,28 +311,11 @@ async def bxh(ctx):
 
         member = ctx.guild.get_member(user_id)
 
-        name = (
-            member.display_name
-            if member
-            else "Người chơi"
-        )
+        if member:
+            name = member.display_name
+        else:
+            name = "Người chơi"
 
         text += (
             f"**{i}.** {name} "
-            f"— `{money:,}` 💰\n"
-        )
-
-    await ctx.send(text)
-
-
-# ==============================
-# KHỞI ĐỘNG
-# ==============================
-
-if not TOKEN:
-    print("❌ CHƯA CÓ BOT_TOKEN!")
-    print("👉 Hãy thêm BOT_TOKEN vào Environment Variables.")
-
-else:
-    print("🔄 Đang đăng nhập Discord...")
-    bot.run(BOT_TOKEN)
+           
