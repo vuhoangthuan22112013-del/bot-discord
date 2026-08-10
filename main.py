@@ -1008,6 +1008,8 @@ else:
         COLOR_RED
     )
 
-await msg.edit(embed=result_embed)
+    await msg.edit(embed=result_embed)
+
+
 # KHỞI CHẠY BOT
 bot.run(os.getenv("TOKEN_BOT"))
