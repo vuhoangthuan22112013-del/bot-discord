@@ -44,6 +44,11 @@ def get_user(uid, name="Thành viên"):
 
 @bot.event
 async def on_ready():
+    # Cài đặt trạng thái Online và hiển thị chữ "Đang chơi !trogiup"
+    await bot.change_presence(
+        status=discord.Status.online, 
+        activity=discord.Game(name="!trogiup | Casino Bet88")
+    )
     print(f"✅ BOT ĐÃ SẴN SÀNG HOẠT ĐỘNG: {bot.user}")
 
 # --- LỆNH TRỢ GIÚP (!trogiup) ---
@@ -98,7 +103,7 @@ async def vi_cmd(ctx, member: discord.Member = None):
     )
     await ctx.send(res)
 
-# --- LỆNH QUAY SLOT (!quay) - HIỆN TỪNG Ô MỘT ---
+# --- LỆNH QUAY SLOT (!quay) ---
 @bot.command(name="quay")
 async def quay_cmd(ctx, bet: int = None):
     cd = check_spam(ctx.author.id, "quay", 1.5)
@@ -119,7 +124,6 @@ async def quay_cmd(ctx, bet: int = None):
     s2 = random.choice(slots)
     s3 = random.choice(slots)
 
-    # Bước 1: Hiện ô đầu tiên
     msg = await ctx.send(
         f"┌─────────────────────────┐\n"
         f"🎰 **MÁY SLOT BET88**\n"
@@ -129,7 +133,6 @@ async def quay_cmd(ctx, bet: int = None):
     )
     await asyncio.sleep(0.6)
 
-    # Bước 2: Hiện tiếp ô thứ 2
     await msg.edit(content=(
         f"┌─────────────────────────┐\n"
         f"🎰 **MÁY SLOT BET88**\n"
@@ -139,7 +142,6 @@ async def quay_cmd(ctx, bet: int = None):
     ))
     await asyncio.sleep(0.6)
 
-    # Bước 3: Hiện nốt ô thứ 3 và kết quả
     win = (s1 == s2 == s3)
     if win:
         reward = bet * 4
