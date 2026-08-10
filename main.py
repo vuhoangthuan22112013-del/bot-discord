@@ -112,13 +112,13 @@ async def quay_cmd(ctx, bet: int = None):
     await asyncio.sleep(0.6)
 
     # Bước 2: Hiện tiếp ô thứ 2
-    await msg.edit(content=
+    await msg.edit(content=(
         f"┌─────────────────────────┐\n"
         f"🎰 **MÁY SLOT BET88**\n"
         f"Máy đang quay...\n"
         f"`[ {s1} ] [ {s2} ] [ ? ]`\n"
         f"└─────────────────────────┘"
-    )
+    ))
     await asyncio.sleep(0.6)
 
     # Bước 3: Hiện nốt ô thứ 3 và kết quả
@@ -179,7 +179,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
             await asyncio.sleep(10)
             if not tx_session["active"]: return
             try:
-                await msg.edit(content=
+                await msg.edit(content=(
                     f"┌─────────────────────────┐\n"
                     f"🔴 **SÒNG TÀI XỈU BET88** 🔴\n"
                     f"Gõ `!tx <tai/xiu> <tiền>` để theo!\n"
@@ -187,7 +187,7 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
                     f"⏱️ Thời gian: **{remaining} giây**\n"
                     f"💰 Tổng Tài: `{tx_session['total_tai']:,}$` | Tổng Xỉu: `{tx_session['total_xiu']:,}$`\n"
                     f"└─────────────────────────┘"
-                )
+                ))
             except: pass
 
         await asyncio.sleep(10)
@@ -195,12 +195,12 @@ async def taixiu_cmd(ctx, choice: str = None, bet: int = None):
 
         tx_session["active"] = False
         try:
-            await msg.edit(content=
+            await msg.edit(content=(
                 f"┌─────────────────────────┐\n"
                 f"🎲 **NHÀ CÁI BET88 ĐANG XÓC BÁT...**\n"
                 f"💰 Tài: `{tx_session['total_tai']:,}$` | `[ ? ]` `[ ? ]` `[ ? ]`\n"
                 f"└─────────────────────────┘"
-            )
+            ))
         except: pass
 
         await asyncio.sleep(2.0)
@@ -288,13 +288,13 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     )
     await asyncio.sleep(0.8)
     
-    await msg.edit(content=
+    await msg.edit(content=(
         f"┌─────────────────────────┐\n"
         f"🪙 **XÓC ĐĨA BET88**\n"
         f"4 Đồng xu\n"
         f"*Đặt bát xuống bàn...*\n"
         f"└─────────────────────────┘"
-    )
+    ))
     await asyncio.sleep(0.8)
     
     reds = random.randint(0, 4)
@@ -354,13 +354,13 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
     )
     await asyncio.sleep(0.7)
 
-    await msg.edit(content=
+    await msg.edit(content=(
         f"┌─────────────────────────┐\n"
         f"🎲 **BẦU CUA BET88**\n"
         f"Trạng thái\n"
         f"Từ từ hé bát...\n"
         f"└─────────────────────────┘"
-    )
+    ))
     await asyncio.sleep(0.8)
 
     keys = list(animals.keys())
@@ -391,7 +391,7 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         )
     await msg.edit(content=res)
 
-# Sử dụng TOKEN_BOT đúng theo yêu cầu của bạn
+# Đọc token đúng biến TOKEN_BOT theo yêu cầu
 token = os.getenv("TOKEN_BOT")
 bot.run(token)
     
