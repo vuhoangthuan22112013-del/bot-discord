@@ -6,70 +6,87 @@ I.message_content = True
 bot = commands.Bot(command_prefix="!", intents=I, help_command=None)
 
 U, C = {}, {}
+RATE = {}  # tỷ lệ thắng theo server
 BLUE, ORANGE, GREEN, RED, YELLOW = 0x3498DB, 0xF1C40F, 0x2ECC71, 0xE74C3C, 0xF1C40F
 
-TX = {"on": False, "bets": {}, "tai": 0, "xiu": 0, "msg": None}
+TX = {"on": 0, "bets": {}, "tai": 0, "xiu": 0, "msg": None}
 
 def E(t, d, c=BLUE):
     return discord.Embed(title=t, description=d, color=c)
 
 def user(i, n="Thành viên"):
     if i not in U:
-        U[i] = {"name": n, "cash": 4899, "bank": 0, "debt": 0, "vip": False}
+        U[i] = {"name": n, "cash": 4899, "bank": 0, "vip": 0, "dd": 0}
+    U[i]["name"] = n
     return U[i]
 
 def adm(c):
     return c.author.guild_permissions.administrator
 
 async def blocked(c):
-    if user(c.author.id, c.author.name)["debt"] > 0:
-        await c.send("🚫 Bạn đang có nợ, hãy trả hết nợ!")
-        return True
     return False
+
+def winrate(gid):
+    return RATE.get(gid, 50)
+
+# ================= BOT =================
 
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game("!trogiup | Casino"))
     print("ONLINE:", bot.user)
 
-# ================= HELP =================
+# ================= TROGIUP =================
 
 @bot.command(name="trogiup", aliases=["help"])
 async def trogiup(c):
     await c.send(embed=E(
         "🎰 CASINO BET88",
-        "`!tx tai 1000` `!tx xiu 1000`\n"
-        "`!bc cua 1000` `!xd chan 1000` `!quay 1000`\n"
-        "`!vi` `!gui` `!rut` `!chuyen @User 100`\n"
+        "🎲 **TÀI XỈU**\n"
+        "`!tx tai 1000` `!tx xiu 1000`\n\n"
+        "🦀 **BẦU CUA**\n"
+        "`!bc cua 1000`\n\n"
+        "🪙 **XÓC ĐĨA**\n"
+        "`!xd chan 1000` `!xd le 1000`\n\n"
+        "🎰 **MÁY SLOT**\n"
+        "`!quay 1000`\n\n"
+        "💳 **TÀI KHOẢN**\n"
+        "`!vi` `!gui` `!rut` `!chuyen @User 100`\n\n"
+        "🎁 **TIỆN ÍCH**\n"
         "`!diemdanh` `!bxh` `!muarole Vip`\n\n"
-        "👑 Admin: `!taocode` `!thuongcode` `!settien` `!resettien`"
-    )
-    )
+        "👑 **ADMIN**\n"
+        "`!taocode` `!thuongcode` `!settien` `!resettien` `!tyle 0-100`"
+    ))
 
-# ================= TÀI KHOẢN =================
+# ================= VI =================
 
 @bot.command()
 async def vi(c, m: discord.Member = None):
     m = m or c.author
     u = user(m.id, m.name)
 
-    hạng = "👑 **VIP**" if u["vip"] else "🐥 Người chơi Thường"
+    if u["vip"]:
+        hang = "👑 **Vương miện VIP**"
+        ten = f"🟡 **{m.name}**"
+    else:
+        hang = "🐥 Người chơi Thường"
+        ten = f"👤 **{m.name}**"
 
     await c.send(embed=E(
         "💳 TÀI KHOẢN",
-        f"👤 **{m.name}**\n"
-        f"🏷️ Hạng: {hạng}\n\n"
+        f"{ten}\n"
+        f"🏷️ Hạng: {hang}\n\n"
         f"💵 Ví: `{u['cash']:,}$`\n"
         f"🏦 Bank: `{u['bank']:,}$`"
     ))
 
+# ================= BANK =================
+
 @bot.command()
 async def gui(c, n: int = None):
     u = user(c.author.id, c.author.name)
-
     if not n or n <= 0 or u["cash"] < n:
         return await c.send("❌ Không đủ tiền!")
-
     u["cash"] -= n
     u["bank"] += n
     await c.send(f"🏦 Gửi `{n:,}$` thành công!")
@@ -77,10 +94,8 @@ async def gui(c, n: int = None):
 @bot.command()
 async def rut(c, n: int = None):
     u = user(c.author.id, c.author.name)
-
     if not n or n <= 0 or u["bank"] < n:
         return await c.send("❌ Bank không đủ!")
-
     u["bank"] -= n
     u["cash"] += n
     await c.send(f"🏦 Rút `{n:,}$` thành công!")
@@ -98,22 +113,20 @@ async def chuyen(c, m: discord.Member = None, n: int = None):
 
     a["cash"] -= n
     b["cash"] += n
-
     await c.send(f"💸 {c.author.mention} → {m.mention}: `{n:,}$`")
 
-# ================= ĐIỂM DANH =================
+# ================= DIEM DANH =================
 
 @bot.command()
 async def diemdanh(c):
     u = user(c.author.id, c.author.name)
     now = time.time()
-    cd = 12 * 60 * 60
+    left = int(43200 - (now - u["dd"]))
 
-    if now - u.get("dd", 0) < cd:
-        con = int(cd - (now - u.get("dd", 0)))
+    if left > 0:
         return await c.send(
             f"⏳ **Mày đã điểm danh rồi!**\n"
-            f"🕐 Đợi thêm **{con:,} giây** nữa."
+            f"🕐 Đợi thêm **{left:,} giây** nữa."
         )
 
     u["dd"] = now
@@ -137,17 +150,14 @@ async def bxh(c):
 
     text = ""
     for i, u in enumerate(x, 1):
-        vip = " 👑" if u["vip"] else ""
-        text += f"\n**{i}.** {u['name']}{vip} — `{u['cash'] + u['bank']:,}$`"
+        text += f"\n**{i}.** {u['name']} — `{u['cash']+u['bank']:,}$`"
 
     await c.send(embed=E("🏆 TOP 5", text))
 
-# ================= TÀI XỈU =================
+# ================= TAI XIU =================
 
 @bot.command()
 async def tx(c, ch=None, bet: int = None):
-    if await blocked(c):
-        return
 
     if ch not in ("tai", "xiu") or not bet or bet <= 0:
         return await c.send("❌ `!tx tai 1000`")
@@ -164,19 +174,15 @@ async def tx(c, ch=None, bet: int = None):
     if uid in TX["bets"]:
         return await c.send("❌ Bạn đã cược ván này!")
 
+    # MỞ PHIÊN
     if not TX["on"]:
-        TX.update({
-            "on": True,
-            "bets": {},
-            "tai": 0,
-            "xiu": 0
-        })
+        TX.update(on=1, bets={}, tai=0, xiu=0)
 
         TX["msg"] = await c.send(embed=E(
             "🎲 SÒNG TÀI XỈU 30S 🎲",
-            "Gõ `!tx <tai/xiu> <tiền>`\n\n"
+            "Gõ `!tx <tai/xiu> <tiền>` "
+            "(Tối đa **10,000,000$/ván**)\n\n"
             "⏱️ **Thời gian: 30 giây**\n\n"
-            "💰 **Tối đa 10,000,000$/ván**\n\n"
             "💵 Tổng Tài: `0$` | Tổng Xỉu: `0$`",
             ORANGE
         ))
@@ -195,10 +201,11 @@ async def tx(c, ch=None, bet: int = None):
 
     await TX["msg"].edit(embed=E(
         "🎲 SÒNG TÀI XỈU 30S 🎲",
-        "Gõ `!tx <tai/xiu> <tiền>`\n\n"
+        "Gõ `!tx <tai/xiu> <tiền>` "
+        "(Tối đa **10,000,000$/ván**)\n\n"
         "⏱️ **Đang nhận cược...**\n\n"
-        f"💵 Tổng Tài: `{TX['tai']:,}$`\n"
-        f"💵 Tổng Xỉu: `{TX['xiu']:,}$`",
+        f"💵 Tổng Tài: `{TX['tai']:,}$` | "
+        f"Tổng Xỉu: `{TX['xiu']:,}$`",
         ORANGE
     ))
 
@@ -207,53 +214,68 @@ async def tx(c, ch=None, bet: int = None):
     except:
         pass
 
+
 async def txround():
     await asyncio.sleep(30)
 
     d = [random.randint(1, 6) for _ in range(3)]
     total = sum(d)
-
     result = "tai" if total >= 11 else "xiu"
 
-    win = []
-    lose = []
+    w, l = [], []
 
     for uid, b in TX["bets"].items():
         u = user(uid)
 
+        # Tỷ lệ thắng
+        force = random.randint(1, 100) <= 50
+
+        # tỷ lệ server sẽ được lấy từ RATE nếu có
+        # mặc định 50%
+        gid = 0
+        rate = 50
+
+        # TX dùng kết quả thật nếu không ép
         if b["choice"] == result:
-            prize = b["amount"] * 2
-            u["cash"] += prize
-            win.append(f"• {b['name']} `+{prize:,}$`")
+            won = True
         else:
-            lose.append(f"• {b['name']} `-{b['amount']:,}$`")
+            won = False
+
+        if rate >= 100:
+            won = True
+        elif rate <= 0:
+            won = False
+        elif force and random.randint(1, 100) <= rate:
+            won = True
+
+        if won:
+            p = b["amount"] * 2
+            if u["vip"]:
+                p = int(p * 1.5)
+
+            u["cash"] += p
+            w.append(f"• {b['name']} `+{p:,}$`")
+        else:
+            l.append(f"• {b['name']} `-{b['amount']:,}$`")
 
     await TX["msg"].edit(embed=E(
         "🎲 KẾT QUẢ TÀI XỈU",
-        f"🎲 Xúc xắc\n"
+        f"🎲 **Xúc xắc**\n"
         f"`[ {d[0]} ] - [ {d[1]} ] - [ {d[2]} ]`\n\n"
         f"➡️ **{total} điểm ({result.upper()})**\n\n"
         f"🎉 **THẮNG**\n"
-        f"{chr(10).join(win) or 'Không có'}\n\n"
+        f"{chr(10).join(w) or 'Không có'}\n\n"
         f"💸 **THUA**\n"
-        f"{chr(10).join(lose) or 'Không có'}",
-        GREEN if win else RED
+        f"{chr(10).join(l) or 'Không có'}",
+        GREEN if w else RED
     ))
 
-    TX.update({
-        "on": False,
-        "bets": {},
-        "tai": 0,
-        "xiu": 0,
-        "msg": None
-    })
+    TX.update(on=0, bets={}, tai=0, xiu=0, msg=None)
 
-# ================= BẦU CUA =================
+# ================= BAU CUA =================
 
 @bot.command()
 async def bc(c, ch=None, bet: int = None):
-    if await blocked(c):
-        return
 
     icons = {
         "ca": "🐟",
@@ -276,8 +298,7 @@ async def bc(c, ch=None, bet: int = None):
 
     m = await c.send(embed=E(
         "🦀 BẦU CUA",
-        "🎲 **Lắc... Lắc... Lắc...**\n\n"
-        "`[ ❔ | ❔ | ❔ ]`",
+        "🎲 **LẮC... LẮC... LẮC...**",
         ORANGE
     ))
 
@@ -285,40 +306,48 @@ async def bc(c, ch=None, bet: int = None):
 
     await m.edit(embed=E(
         "🦀 BẦU CUA",
-        "🎲 **Lắc... Lắc... Lắc...**\n\n"
-        "🥣 **Hé bát...**",
+        "🎲 **LẮC... LẮC... LẮC...**\n\n"
+        "🥣 **HÉ BÁT...**",
         ORANGE
     ))
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.2)
 
     r = [random.choice(list(icons)) for _ in range(3)]
     n = r.count(ch)
 
-    if n:
-        prize = bet * (n + 1)
-        u["cash"] += prize
+    won = n > 0
 
-        res = f"🎉 **THẮNG +{prize:,}$ vào ví**"
+    if RATE.get(c.guild.id, 50) >= 100:
+        won = True
+    elif RATE.get(c.guild.id, 50) <= 0:
+        won = False
+    elif random.randint(1, 100) > RATE.get(c.guild.id, 50):
+        won = n > 0
+
+    if won:
+        p = bet * (n + 1)
+        if u["vip"]:
+            p = int(p * 1.5)
+        u["cash"] += p
+        result = f"🎉 **THẮNG +{p:,}$**"
         color = GREEN
     else:
-        res = f"💸 **THUA -{bet:,}$**"
+        result = f"💸 **THUA -{bet:,}$**"
         color = RED
 
     await m.edit(embed=E(
         "🦀 BẦU CUA",
         f"`[ {' | '.join(icons[x] for x in r)} ]`\n\n"
-        f"{res}\n\n"
+        f"{result}\n"
         f"💵 Ví: `{u['cash']:,}$`",
         color
     ))
 
-# ================= XÓC ĐĨA =================
+# ================= XOC DIA =================
 
 @bot.command()
 async def xd(c, ch=None, bet: int = None):
-    if await blocked(c):
-        return
 
     if ch not in ("chan", "le") or not bet or bet <= 0:
         return await c.send("❌ `!xd chan 1000`")
@@ -332,8 +361,7 @@ async def xd(c, ch=None, bet: int = None):
 
     m = await c.send(embed=E(
         "🪙 XÓC ĐĨA",
-        "🥣 **Xóc... Xóc... Xóc...**\n\n"
-        "`[ ⚪ | ⚪ | ⚪ | ⚪ ]`",
+        "🟠 **XÓC... XÓC... XÓC...**",
         ORANGE
     ))
 
@@ -341,34 +369,46 @@ async def xd(c, ch=None, bet: int = None):
 
     n = random.randint(0, 4)
     result = "chan" if n % 2 == 0 else "le"
-    win = result == ch
-
-    balls = " | ".join("🔴" if i < n else "⚪" for i in range(4))
-
-    if win:
-        prize = bet * 2
-        u["cash"] += prize
-        res = f"🎉 **THẮNG +{prize:,}$ vào ví**"
-        color = GREEN
-    else:
-        res = f"💸 **THUA -{bet:,}$**"
-        color = RED
 
     await m.edit(embed=E(
         "🪙 XÓC ĐĨA",
-        f"`[ {balls} ]`\n\n"
+        "🟠 **XÓC... XÓC... XÓC...**\n\n"
+        "🥣 **ĐANG MỞ ĐĨA...**",
+        ORANGE
+    ))
+
+    await asyncio.sleep(1)
+
+    won = result == ch
+    rate = RATE.get(c.guild.id, 50)
+
+    if rate >= 100:
+        won = True
+    elif rate <= 0:
+        won = False
+
+    if won:
+        p = int(bet * 2 * (1.5 if u["vip"] else 1))
+        u["cash"] += p
+        res = f"🎉 **THẮNG +{p:,}$**"
+        co = GREEN
+    else:
+        res = f"💸 **THUA -{bet:,}$**"
+        co = RED
+
+    await m.edit(embed=E(
+        "🪙 XÓC ĐĨA",
+        f"`[ {'🔴' if n else '⚪'} ]`\n\n"
         f"🎯 **{result.upper()}**\n\n"
         f"{res}\n"
         f"💵 Ví: `{u['cash']:,}$`",
-        color
+        co
     ))
 
-# ================= SLOT =================
+# ================= QUAY =================
 
 @bot.command()
 async def quay(c, bet: int = None):
-    if await blocked(c):
-        return
 
     if not bet or bet <= 0:
         return await c.send("❌ `!quay 1000`")
@@ -382,53 +422,60 @@ async def quay(c, bet: int = None):
 
     m = await c.send(embed=E(
         "🎰 MÁY SLOT",
-        "🎰 **Đang quay...**\n\n"
+        "🎰 **ĐANG QUAY...**\n\n"
         "`[ ❔ | ❔ | ❔ ]`",
         ORANGE
     ))
 
     await asyncio.sleep(1.5)
 
-    symbols = ["🍒", "🍋", "🔔", "⭐", "💎", "7️⃣"]
-    s = [random.choice(symbols) for _ in range(3)]
+    s = [
+        random.choice(["🍒", "🍋", "🔔", "⭐", "💎", "7️⃣"])
+        for _ in range(3)
+    ]
 
     same = max(s.count(x) for x in set(s))
+    won = same >= 2
 
-    if same == 3:
-        prize = bet * 5
-        u["cash"] += prize
-        res = f"🎉 **NỔ HŨ +{prize:,}$ vào ví**"
-        color = GREEN
+    rate = RATE.get(c.guild.id, 50)
 
-    elif same == 2:
-        prize = bet * 2
-        u["cash"] += prize
-        res = f"🎉 **THẮNG +{prize:,}$ vào ví**"
-        color = GREEN
+    if rate >= 100:
+        won = True
+    elif rate <= 0:
+        won = False
 
+    if won:
+        p = bet * (5 if same == 3 else 2)
+        if u["vip"]:
+            p = int(p * 1.5)
+
+        u["cash"] += p
+        res = f"🎉 **THẮNG +{p:,}$**"
+        co = GREEN
     else:
         res = f"💸 **THUA -{bet:,}$**"
-        color = RED
+        co = RED
 
     await m.edit(embed=E(
         "🎰 MÁY SLOT",
         f"`[ {' | '.join(s)} ]`\n\n"
-        f"{res}\n\n"
+        f"{res}\n"
         f"💵 Ví: `{u['cash']:,}$`",
-        color
+        co
     ))
 
 # ================= VIP =================
 
 @bot.command()
 async def muarole(c, r=None):
+
     if (r or "").lower() != "vip":
         return await c.send("❌ `!muarole Vip`")
 
     u = user(c.author.id, c.author.name)
 
     if u["vip"]:
-        return await c.send("👑 Bạn đã là VIP!")
+        return await c.send("👑 Bạn đã là **Vương miện VIP**!")
 
     if u["cash"] < 30_000_000:
         return await c.send("❌ VIP giá **30,000,000$**!")
@@ -442,10 +489,18 @@ async def muarole(c, r=None):
         return await c.send("❌ Server chưa có role `Vip`!")
 
     if role >= c.guild.me.top_role:
-        return await c.send("❌ Kéo role `Vip` xuống dưới role Bot!")
+        return await c.send(
+            "❌ Kéo role **Vip** xuống dưới role Bot!"
+        )
+
+    # đổi role thành vàng
+    try:
+        await role.edit(color=discord.Color.gold())
+    except:
+        pass
 
     u["cash"] -= 30_000_000
-    u["vip"] = True
+    u["vip"] = 1
 
     try:
         await c.author.add_roles(role)
@@ -453,12 +508,41 @@ async def muarole(c, r=None):
         return await c.send("❌ Bot thiếu quyền quản lý role!")
 
     await c.send(embed=E(
-        "👑 VIP",
-        f"🎉 {c.author.mention} đã trở thành **VIP**!\n\n"
-        "👑 Hạng: **VIP**\n"
-        "💛 Role: **VIP**\n"
-        "💰 Giá: `30,000,000$`",
+        "👑 MUA VIP",
+        f"🎉 {c.author.mention} đã trở thành **👑 Vương miện VIP**!\n\n"
+        "💰 Giá: `30,000,000$`\n"
+        "💵 Thưởng game: **x1.5**\n"
+        "🟡 Tên: **Màu vàng**",
         YELLOW
+    ))
+
+# ================= ADMIN TY LE =================
+
+@bot.command(name="tyle")
+async def tyle(c, n: int = None):
+
+    if not adm(c):
+        return await c.send("⛔ Chỉ Admin!")
+
+    if n is None or n < 0 or n > 100:
+        return await c.send(
+            "❌ Dùng: `!tyle 0-100`\n"
+            "Ví dụ: `!tyle 70`"
+        )
+
+    RATE[c.guild.id] = n
+
+    if n == 0:
+        msg = "🚫 **0%** — Không thắng."
+    elif n == 100:
+        msg = "🔥 **100%** — Đánh là thắng."
+    else:
+        msg = f"🎯 Tỷ lệ thắng hiện tại: **{n}%**"
+
+    await c.send(embed=E(
+        "⚙️ CÀI TỶ LỆ THẮNG",
+        msg,
+        ORANGE
     ))
 
 # ================= CODE =================
@@ -468,6 +552,7 @@ def newcode():
 
 @bot.command()
 async def thuongcode(c, n: int = None, uses: int = None):
+
     if not adm(c):
         return await c.send("⛔ Chỉ Admin!")
 
@@ -475,24 +560,19 @@ async def thuongcode(c, n: int = None, uses: int = None):
         return await c.send("❌ `!thuongcode 1000 5`")
 
     x = newcode()
-
-    C[x] = {
-        "money": n,
-        "uses": uses,
-        "used": set()
-    }
+    C[x] = {"money": n, "uses": uses, "used": set()}
 
     await c.send(embed=E(
-        "🎁 CODE THƯỞNG",
-        f"🎟️ Mã: `{x}`\n"
+        "🎁 PHẦN THƯỞNG CODE",
+        f"🔐 Mã: `{x}`\n"
         f"💰 Tiền: `{n:,}$`\n"
-        f"👥 Lượt: `{uses}`\n\n"
-        f"📌 Dùng: `!nhapcode {x}`",
+        f"👥 Lượt: `{uses}`",
         GREEN
     ))
 
 @bot.command()
 async def nhapcode(c, x=None):
+
     x = (x or "").upper()
 
     if x not in C:
@@ -501,21 +581,19 @@ async def nhapcode(c, x=None):
     z = C[x]
 
     if c.author.id in z["used"]:
-        return await c.send("❌ Bạn đã dùng code này!")
+        return await c.send("❌ Bạn đã dùng code!")
 
     if len(z["used"]) >= z["uses"]:
         return await c.send("❌ Code hết lượt!")
 
     z["used"].add(c.author.id)
-
     user(c.author.id, c.author.name)["cash"] += z["money"]
 
-    await c.send(
-        f"🎁 {c.author.mention} nhận **+{z['money']:,}$** vào ví!"
-    )
+    await c.send(f"🎁 **+{z['money']:,}$ vào ví!**")
 
 @bot.command()
 async def taocode(c, n: int = None, uses: int = None):
+
     if not adm(c):
         return await c.send("⛔ Chỉ Admin!")
 
@@ -523,28 +601,22 @@ async def taocode(c, n: int = None, uses: int = None):
         return await c.send("❌ `!taocode 1000 1`")
 
     x = newcode()
-
-    C[x] = {
-        "money": n,
-        "uses": uses,
-        "used": set()
-    }
+    C[x] = {"money": n, "uses": uses, "used": set()}
 
     try:
         await c.author.send(
-            f"🎁 CODE: `{x}`\n"
-            f"💰 `{n:,}$`\n"
-            f"👥 `{uses}` lượt"
+            f"🔐 `{x}` | 💰 `{n:,}$` | 👥 `{uses}` lượt"
         )
     except:
         pass
 
     await c.send("✅ Code đã gửi DM!")
 
-# ================= ADMIN TIỀN =================
+# ================= ADMIN MONEY =================
 
 @bot.command()
 async def settien(c, m: discord.Member = None, n: int = None):
+
     if not adm(c):
         return await c.send("⛔ Chỉ Admin!")
 
@@ -553,16 +625,13 @@ async def settien(c, m: discord.Member = None, n: int = None):
 
     user(m.id, m.name)["cash"] = max(0, n)
 
-    await c.send(embed=E(
-        "💰 SET TIỀN",
-        f"👤 {m.mention}\n"
-        f"💵 Ví mới: **`{n:,}$`**\n\n"
-        "✅ Đã cập nhật!",
-        GREEN
-    ))
+    await c.send(
+        f"💰 {m.mention} → Ví: **`{n:,}$`**"
+    )
 
 @bot.command()
 async def resettien(c, m: discord.Member = None):
+
     if not adm(c):
         return await c.send("⛔ Chỉ Admin!")
 
@@ -571,15 +640,11 @@ async def resettien(c, m: discord.Member = None):
 
     user(m.id, m.name)["cash"] = 4899
 
-    await c.send(embed=E(
-        "🔄 RESET TIỀN",
-        f"👤 {m.mention}\n"
-        "💵 Ví: **`4,899$`**\n\n"
-        "🧹 Đã reset!",
-        ORANGE
-    ))
+    await c.send(
+        f"🔄 {m.mention} đã reset về **`4,899$`**"
+    )
 
-# ================= RUN =================
+# ================= START =================
 
 token = os.getenv("TOKEN_BOT")
 
