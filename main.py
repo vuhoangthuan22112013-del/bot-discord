@@ -44,7 +44,6 @@ def get_user(uid, name="Thành viên"):
 
 @bot.event
 async def on_ready():
-    # Cài đặt trạng thái Online và hiển thị chữ "Đang chơi !trogiup"
     await bot.change_presence(
         status=discord.Status.online, 
         activity=discord.Game(name="!trogiup | Casino Bet88")
@@ -59,13 +58,15 @@ async def trogiup_cmd(ctx):
         return await ctx.send(f"⚠️ {ctx.author.mention} Gõ từ từ thôi! Đợi **{cd}** giây nữa!")
 
     menu_text = (
-        "🎰 **CASINO BET88 UY TÍN** 🎰\n\n"
+        "┌─────────────────────────┐\n"
+        "🎰 **CASINO BET88 UY TÍN**\n\n"
         "⚔️ **ĐỐI KHÁNG (PVP)**\n"
         "`!danhbai`, `!thachdau`, `!dagapvp`, `!tuxipvp @User`\n\n"
         "🎲 **CASINO (SOLO)**\n"
         "`!tx`, `!daga`, `!tuxi`, `!bc`, `!xd`, `!bai`, `!rl`, `!quay`, `!duangua`, `!coinflip`\n\n"
         "🏛️ **HỆ THỐNG**\n"
-        "`!vi`, `!gui`, `!rut`, `!chuyen`, `!diemdanh`, `!bxh`, `!nhapcode`"
+        "`!vi`, `!gui`, `!rut`, `!chuyen`, `!diemdanh`, `!bxh`, `!nhapcode`\n"
+        "└─────────────────────────┘"
     )
     await ctx.send(menu_text)
 
@@ -147,23 +148,23 @@ async def quay_cmd(ctx, bet: int = None):
         reward = bet * 4
         u["cash"] += bet + reward
         res = (
-            f"┌─────────────────────────┐\n"
-            f"🎰 **MÁY SLOT BET88**\n"
-            f"KẾT QUẢ\n"
-            f"`[ {s1} ] [ {s2} ] [ {s3} ]`\n"
-            f"Thông báo\n"
-            f"✨ **NỔ HŨ!** Nhận `+{reward:,}$`\n"
-            f"└─────────────────────────┘"
+            f"🟩 ┌─────────────────────────┐\n"
+            f"🟩 🎰 **MÁY SLOT BET88**\n"
+            f"🟩 KẾT QUẢ\n"
+            f"🟩 `[ {s1} ] [ {s2} ] [ {s3} ]`\n"
+            f"🟩 Thông báo\n"
+            f"🟩 ✨ **NỔ HŨ!** Nhận `+{reward:,}$`\n"
+            f"🟩 └─────────────────────────┘"
         )
     else:
         res = (
-            f"┌─────────────────────────┐\n"
-            f"🎰 **MÁY SLOT BET88**\n"
-            f"KẾT QUẢ\n"
-            f"`[ {s1} ] [ {s2} ] [ {s3} ]`\n"
-            f"Thông báo\n"
-            f"💸 **TRẬT HỦ (MẤT TRẮNG)!** `-{bet:,}$`\n"
-            f"└─────────────────────────┘"
+            f"🟥 ┌─────────────────────────┐\n"
+            f"🟥 🎰 **MÁY SLOT BET88**\n"
+            f"🟥 KẾT QUẢ\n"
+            f"🟥 `[ {s1} ] [ {s2} ] [ {s3} ]`\n"
+            f"🟥 Thông báo\n"
+            f"🟥 💸 **TRẬT HỦ (MẤT TRẮNG)!** `-{bet:,}$`\n"
+            f"🟥 └─────────────────────────┘"
         )
 
     await msg.edit(content=res)
@@ -326,25 +327,25 @@ async def xocdia_cmd(ctx, choice: str = None, bet: int = None):
     if win:
         u["cash"] += bet * 2
         res = (
-            f"┌─────────────────────────┐\n"
-            f"🪙 **XÓC ĐĨA BET88**\n"
-            f"4 Đồng xu\n"
-            f"{board}\n"
-            f"Kết quả\n"
-            f"➔ **{kq_name} ({reds} Đỏ)**\n"
-            f"✨ **THẮNG!** Nhận `+{bet:,}$`\n"
-            f"└─────────────────────────┘"
+            f"🟩 ┌─────────────────────────┐\n"
+            f"🟩 🪙 **XÓC ĐĨA BET88**\n"
+            f"🟩 4 Đồng xu\n"
+            f"🟩 {board}\n"
+            f"🟩 Kết quả\n"
+            f"🟩 ➔ **{kq_name} ({reds} Đỏ)**\n"
+            f"🟩 ✨ **THẮNG!** Nhận `+{bet:,}$`\n"
+            f"🟩 └─────────────────────────┘"
         )
     else:
         res = (
-            f"┌─────────────────────────┐\n"
-            f"🪙 **XÓC ĐĨA BET88**\n"
-            f"4 Đồng xu\n"
-            f"{board}\n"
-            f"Kết quả\n"
-            f"➔ **{kq_name} ({reds} Đỏ)**\n"
-            f"💸 **CÁI ĂN SẠCH!** `-{bet:,}$`\n"
-            f"└─────────────────────────┘"
+            f"🟥 ┌─────────────────────────┐\n"
+            f"🟥 🪙 **XÓC ĐĨA BET88**\n"
+            f"🟥 4 Đồng xu\n"
+            f"🟥 {board}\n"
+            f"🟥 Kết quả\n"
+            f"🟥 ➔ **{kq_name} ({reds} Đỏ)**\n"
+            f"🟥 💸 **CÁI ĂN SẠCH!** `-{bet:,}$`\n"
+            f"🟥 └─────────────────────────┘"
         )
     await msg.edit(content=res)
 
@@ -391,27 +392,27 @@ async def baucua_cmd(ctx, choice: str = None, bet: int = None):
         reward = bet * matches
         u["cash"] += bet + reward
         res = (
-            f"┌─────────────────────────┐\n"
-            f"🎲 **BẦU CUA BET88**\n"
-            f"MỞ BÁT\n"
-            f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
-            f"Tổng kết\n"
-            f"✨ **TRÚNG {matches} CON!** `+{reward:,}$`\n"
-            f"└─────────────────────────┘"
+            f"🟩 ┌─────────────────────────┐\n"
+            f"🟩 🎲 **BẦU CUA BET88**\n"
+            f"🟩 MỞ BÁT\n"
+            f"🟩 `[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
+            f"🟩 Tổng kết\n"
+            f"🟩 ✨ **TRÚNG {matches} CON!** `+{reward:,}$`\n"
+            f"🟩 └─────────────────────────┘"
         )
     else:
         res = (
-            f"┌─────────────────────────┐\n"
-            f"🎲 **BẦU CUA BET88**\n"
-            f"MỞ BÁT\n"
-            f"`[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
-            f"Tổng kết\n"
-            f"💸 **MẤT SẠCH!** `-{bet:,}$`\n"
-            f"└─────────────────────────┘"
+            f"🟥 ┌─────────────────────────┐\n"
+            f"🟥 🎲 **BẦU CUA BET88**\n"
+            f"🟥 MỞ BÁT\n"
+            f"🟥 `[ {animals[d1]} ] [ {animals[d2]} ] [ {animals[d3]} ]`\n"
+            f"🟥 Tổng kết\n"
+            f"🟥 💸 **MẤT SẠCH!** `-{bet:,}$`\n"
+            f"🟥 └─────────────────────────┘"
         )
     await msg.edit(content=res)
 
 # Khởi chạy bot với biến TOKEN_BOT
 token = os.getenv("TOKEN_BOT")
 bot.run(token)
-    
+        
