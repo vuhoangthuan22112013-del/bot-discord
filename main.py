@@ -1,14 +1,11 @@
-import os
-import random
-import asyncio
+import os, random, asyncio
 from datetime import datetime, timedelta
-
 import discord
 from discord.ext import commands
 
 TOKEN = os.getenv("TOKEN_BOT")
 if not TOKEN:
-    raise RuntimeError("❌ Chưa có biến TOKEN_BOT trên GitHub/Render!")
+    raise RuntimeError("❌ Chưa có biến TOKEN_BOT!")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -24,11 +21,7 @@ bad_debt_role = "Nợ xấu"
 
 def user(uid):
     if uid not in users:
-        users[uid] = {
-            "money": 7500,
-            "bank": 0,
-            "luck": 100
-        }
+        users[uid] = {"money": 7500, "bank": 0, "luck": 100}
     return users[uid]
 
 
@@ -57,7 +50,7 @@ async def trogiup(ctx):
         """🎰 **CASINO**
 
 🎲 `!tx tai/xiu 1000`
-🦀 `!bc 1000`
+🍐 `!bc 1000`
 🪙 `!xd chan/le 1000`
 🎰 `!quay 1000`
 ✊ `!tuxi bao/bua/keo 1000`
@@ -78,15 +71,13 @@ async def trogiup(ctx):
 🤝 **VAY NGƯỜI CHƠI**
 
 💰 `!vay @user 50000`
-💵 `!trano @user`
+💵 `!trano`
 
 👑 **ADMIN**
 
-🔐 `!taocode`
-🎫 `!thuongcode`
-📊 `!tyle`
-💰 `!settien`
-🔄 `!resettien`"""
+💰 `!settien @user 50000`
+🔄 `!resettien @user`
+📊 `!tyle`"""
     ))
 
 
@@ -95,7 +86,6 @@ async def trogiup(ctx):
 @bot.command()
 async def vi(ctx):
     x = user(ctx.author.id)
-
     await ctx.send(embed=card(
         "💳 TÀI KHOẢN",
         f"""👤 {ctx.author.mention}
@@ -126,7 +116,6 @@ async def diemdanh(ctx):
 @bot.command()
 async def gui(ctx, amount: int):
     x = user(ctx.author.id)
-
     if amount <= 0 or amount > x["money"]:
         return await ctx.send("❌ Số tiền không hợp lệ.")
 
@@ -146,7 +135,6 @@ async def gui(ctx, amount: int):
 @bot.command()
 async def rut(ctx, amount: int):
     x = user(ctx.author.id)
-
     if amount <= 0 or amount > x["bank"]:
         return await ctx.send("❌ Ngân hàng không đủ tiền.")
 
@@ -169,7 +157,6 @@ async def chuyen(ctx, member: discord.Member, amount: int):
 
     if member.bot:
         return await ctx.send("❌ Không thể chuyển cho bot.")
-
     if amount <= 0 or amount > x["money"]:
         return await ctx.send("❌ Không đủ tiền.")
 
@@ -273,8 +260,7 @@ async def finish_tx(ctx):
             win = bet["amount"] * 2
             user(uid)["money"] += win
             winners.append(
-                f"🏆 {bet['name']} `+{cash(win)}`
-"
+                f"🏆 {bet['name']} `+{cash(win)}`"
             )
         else:
             winners.append(
@@ -283,7 +269,7 @@ async def finish_tx(ctx):
 
     text = (
         f"🎯 **Kết quả**\n\n"
-        f"`[ {dice[0]} ] [ {dice[1]} ] [ {dice[2]} ]`\n\n"
+        f"# 🎲  {dice[0]}   {dice[1]}   {dice[2]}\n\n"
         f"💥 **TỔNG: {total}**\n"
         f"{'🔥 TÀI' if result == 'tai' else '❄️ XỈU'}\n\n"
     )
@@ -309,10 +295,10 @@ async def bc(ctx, amount: int):
     x["money"] -= amount
 
     await ctx.send(embed=card(
-        "🦀 BẦU CUA",
+        "🍐 BẦU CUA",
         f"""🎯 Cược: `{cash(amount)}`
 
-🎲 Lắc... Lắc... Lắc..."""
+🍐  Lắc... Lắc... Lắc..."""
     ))
 
     await asyncio.sleep(2)
@@ -321,8 +307,8 @@ async def bc(ctx, amount: int):
     result = random.choices(icons, k=3)
 
     await ctx.send(embed=card(
-        "🦀 BẦU CUA",
-        f"""📢 **Thông báo**
+        "🍐 BẦU CUA",
+        f"""**Thông báo**
 
 # {result[0]}   {result[1]}   {result[2]}
 
@@ -350,18 +336,18 @@ async def xd(ctx, choice: str, amount: int):
         "🪙 XÓC ĐĨA",
         f"""🎯 Cược: `{choice.upper()}` — `{cash(amount)}`
 
-🪙 Xóc... Xóc... Xóc..."""
+🪙  Xóc... Xóc... Xóc..."""
     ))
 
     await asyncio.sleep(2)
 
     result = [random.choice(["🔴", "⚪"]) for _ in range(4)]
     is_chan = result.count("🔴") % 2 == 0
-    result_text = "CHAN" if is_chan else "LE"
+    result_text = "CHẴN" if is_chan else "LẺ"
 
     await ctx.send(embed=card(
         "🪙 XÓC ĐĨA",
-        f"""📢 **Thông báo**
+        f"""**Thông báo**
 
 # {result[0]}   {result[1]}   {result[2]}   {result[3]}
 
@@ -386,7 +372,7 @@ async def quay(ctx, amount: int):
         "🎰 QUAY",
         f"""🎯 Cược: `{cash(amount)}`
 
-🎰 Đang quay..."""
+🎰  Đang quay..."""
     ))
 
     await asyncio.sleep(2)
@@ -396,7 +382,7 @@ async def quay(ctx, amount: int):
 
     await ctx.send(embed=card(
         "🎰 QUAY",
-        f"""📢 **Thông báo**
+        f"""**Thông báo**
 
 # {result[0]}   {result[1]}   {result[2]}
 
@@ -419,7 +405,6 @@ async def tuxi(ctx, choice: str, amount: int):
         return await ctx.send("❌ Không đủ tiền.")
 
     x["money"] -= amount
-
     bot_choice = random.choice(["bao", "bua", "keo"])
 
     await ctx.send(embed=card(
@@ -467,44 +452,21 @@ async def vaybot(ctx, amount: int):
 `!trano`"""
     ))
 
-    asyncio.create_task(check_bot_debt(ctx.guild, uid))
-
-
-async def check_bot_debt(guild, uid):
-    await asyncio.sleep(3600)
-
-    loan = loans.get(uid)
-
-    if not loan or not loan.get("bot"):
-        return
-
-    member = guild.get_member(uid)
-
-    if member:
-        try:
-            await member.edit(nick=f"Con Nợ | {member.display_name}")
-        except discord.Forbidden:
-            pass
-
-    loans[uid]["overdue"] = True
-
 
 # ================= VAY NGƯỜI CHƠI =================
 
 @bot.command()
 async def vay(ctx, member: discord.Member, amount: int):
-    x = user(ctx.author.id)
+    lender = user(ctx.author.id)
 
     if member.bot:
-        return await ctx.send("❌ Không thể vay bot/người máy.")
-
+        return await ctx.send("❌ Không thể vay bot.")
     if member.id == ctx.author.id:
-        return await ctx.send("❌ Không thể tự vay chính mình.")
-
-    if amount <= 0 or amount > x["money"]:
+        return await ctx.send("❌ Không thể tự vay.")
+    if amount <= 0 or amount > lender["money"]:
         return await ctx.send("❌ Người cho vay không đủ tiền.")
 
-    x["money"] -= amount
+    lender["money"] -= amount
     user(member.id)["money"] += amount
 
     loans[member.id] = {
@@ -526,39 +488,6 @@ async def vay(ctx, member: discord.Member, amount: int):
 ⚠️ Quá hạn sẽ nhận **Nợ xấu**."""
     ))
 
-    asyncio.create_task(check_player_debt(ctx.guild, member.id))
-
-
-async def check_player_debt(guild, uid):
-    await asyncio.sleep(3600)
-
-    loan = loans.get(uid)
-
-    if not loan or loan.get("bot"):
-        return
-
-    member = guild.get_member(uid)
-
-    if member:
-        role = discord.utils.get(guild.roles, name=bad_debt_role)
-
-        if role is None:
-            try:
-                role = await guild.create_role(
-                    name=bad_debt_role,
-                    reason="BET88 - người chơi quá hạn khoản vay"
-                )
-            except discord.Forbidden:
-                return
-
-        try:
-            await member.add_roles(role)
-        except discord.Forbidden:
-            pass
-
-        x = user(uid)
-        x["luck"] = max(0, x["luck"] - 1)
-
 
 # ================= TRẢ NỢ =================
 
@@ -574,23 +503,12 @@ async def trano(ctx):
     amount = loan["amount"]
 
     if amount > x["money"]:
-        return await ctx.send(
-            f"❌ Bạn cần `{cash(amount)}` để trả nợ."
-        )
+        return await ctx.send(f"❌ Bạn cần `{cash(amount)}` để trả nợ.")
 
     x["money"] -= amount
 
     if loan.get("bot"):
         del loans[uid]
-
-        try:
-            if ctx.guild:
-                member = ctx.guild.get_member(uid)
-                if member:
-                    name = member.display_name.replace("Con Nợ | ", "")
-                    await member.edit(nick=name)
-        except discord.Forbidden:
-            pass
 
         await ctx.send(embed=card(
             "💵 TRẢ NỢ BOT",
@@ -606,14 +524,6 @@ async def trano(ctx):
     lender = loan["lender"]
     user(lender)["money"] += amount
     del loans[uid]
-
-    role = discord.utils.get(ctx.guild.roles, name=bad_debt_role)
-
-    if role and role in ctx.author.roles:
-        try:
-            await ctx.author.remove_roles(role)
-        except discord.Forbidden:
-            pass
 
     await ctx.send(embed=card(
         "💵 TRẢ NỢ",
@@ -631,7 +541,6 @@ async def trano(ctx):
 def admin_only():
     async def predicate(ctx):
         return ctx.author.guild_permissions.administrator
-
     return commands.check(predicate)
 
 
@@ -639,7 +548,6 @@ def admin_only():
 @admin_only()
 async def settien(ctx, member: discord.Member, amount: int):
     user(member.id)["money"] = max(0, amount)
-
     await ctx.send(
         f"💰 Đã đặt ví của {member.mention} thành `{cash(amount)}`."
     )
@@ -653,10 +561,7 @@ async def resettien(ctx, member: discord.Member):
         "bank": 0,
         "luck": 100
     }
-
-    await ctx.send(
-        f"🔄 Đã reset tài khoản {member.mention}."
-    )
+    await ctx.send(f"🔄 Đã reset tài khoản {member.mention}.")
 
 
 @bot.command()
@@ -665,7 +570,7 @@ async def tyle(ctx):
     await ctx.send(embed=card(
         "📊 TỶ LỆ",
         """🎲 Tài Xỉu: 1:1
-🦀 Bầu Cua: 1:1
+🍐 Bầu Cua: 1:1
 🪙 Xóc Đĩa: 1:1
 🎰 Quay: tùy biểu tượng
 
@@ -677,7 +582,6 @@ async def tyle(ctx):
 
 @bot.event
 async def on_command_error(ctx, error):
-
     if isinstance(error, commands.CommandNotFound):
         return
 
